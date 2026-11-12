@@ -1972,7 +1972,7 @@ let lmDraftTimer;
 function lmSaveCustomerDraft(){const f=document.querySelector('#customerForm');if(!f||!lmFormDirty)return;const data={};for(const el of f.elements){if(!el.name||el.type==='file')continue;if(el.type==='checkbox'){(data[el.name]??=[]).push({value:el.value,checked:el.checked})}else data[el.name]=el.value;}try{sessionStorage.setItem('lm_customer_draft',JSON.stringify({data,at:Date.now()}))}catch(e){console.warn('임시저장 실패',e)}}
 window.addEventListener('input',e=>{if(e.target.closest?.('#customerForm')){clearTimeout(lmDraftTimer);lmDraftTimer=setTimeout(lmSaveCustomerDraft,250)}},true);
 window.addEventListener('change',e=>{if(e.target.closest?.('#customerForm'))lmSaveCustomerDraft()},true);
-function lmRestoreCustomerDraft(){const f=document.querySelector('#customerForm');if(!f)return;let draft;try{draft=JSON.parse(sessionStorage.getItem('lm_customer_draft')||'null')}catch{return}if(!draft||Date.now()-draft.at>86400000)return;if(!confirm('저장하지 않은 고객 입력 내용이 남아 있습니다. 복원할까요?'))return;for(const el of f.elements){if(!el.name||!(el.name in draft.data))continue;const val=draft.data[el.name];if(el.type==='checkbox'){el.checked=Array.isArray(val)&&val.some(x=>x.value===el.value&&x.checked)}else if(el.type!=='file')el.value=val;}lmFormDirty=true}
+function lmRestoreCustomerDraft(){const f=document.querySelector('#customerForm');if(!f)return;let draft;try{draft=JSON.parse(sessionStorage.getItem('lm_customer_draft')||'null')}catch{return}if(!draft||Date.now()-draft.at>86400000)return;const noticeId=String(draft.at);try{if(sessionStorage.getItem('lm_customer_draft_dismissed')===noticeId)return}catch{}if(!confirm('저장하지 않은 고객 입력 내용이 있습니다. 복원할까요?\n취소하면 같은 임시입력에 대해서는 다시 묻지 않습니다.')){try{sessionStorage.setItem('lm_customer_draft_dismissed',noticeId)}catch{}return;}for(const el of f.elements){if(!el.name||!(el.name in draft.data))continue;const val=draft.data[el.name];if(el.type==='checkbox'){el.checked=Array.isArray(val)&&val.some(x=>x.value===el.value&&x.checked)}else if(el.type!=='file')el.value=val;}lmFormDirty=true}
 // v14.8: 매물 입력 보호 — 로컬 임시저장 및 화면 재구성 방지
 window.lmPropertyDraftDirty=false;
 const LM_PROPERTY_DRAFT_KEY='lm_property_draft_v148';
@@ -1991,10 +1991,12 @@ function lmRestorePropertyDraft(){
  let d;try{d=JSON.parse(localStorage.getItem(LM_PROPERTY_DRAFT_KEY)||'null')}catch{return}
  if(!d||!d.fields||Date.now()-d.at>7*86400000)return;
  if((d.editingId||'')!==(editing?.id||''))return;
+ const noticeId=String(d.at)+'|'+String(d.editingId||'');
+ try{if(localStorage.getItem(LM_PROPERTY_DRAFT_KEY+'_dismissed')===noticeId)return}catch{}
  f.dataset.lmDraftRestoreAsked='1';
  lmPropertyRestoring=true;
  try{
-  if(!confirm('저장하지 못한 매물 입력내용이 발견되었습니다. 복원할까요?'))return;
+  if(!confirm('저장하지 못한 매물 입력내용이 있습니다. 복원할까요?\n취소하면 같은 임시입력에 대해서는 다시 묻지 않습니다.')){try{localStorage.setItem(LM_PROPERTY_DRAFT_KEY+'_dismissed',noticeId)}catch{}return;}
   const els=[...f.querySelectorAll('input,select,textarea,[contenteditable="true"]')].filter(el=>el.type!=='file'&&el.type!=='button'&&el.type!=='submit');
   d.fields.forEach((v,i)=>{const el=els[i];if(!el||el.name!==v.name)return;if(v.html)el.innerHTML=v.value||'';else if(el.type==='checkbox'||el.type==='radio')el.checked=!!v.checked;else el.value=v.value??'';});
   f.querySelectorAll('.rich-wrap').forEach(w=>{const editor=w.querySelector('.rich-editor'),source=w.querySelector('.rich-source');if(editor&&source)source.value=editor.innerText||''});
