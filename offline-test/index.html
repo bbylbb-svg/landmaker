@@ -2560,6 +2560,12 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent){
     const plan=records.map(record=>({record,row:buildingKey(record)?[...area.querySelectorAll('.buildingrow')].find(r=>r.querySelector('[name=ledgerKey]')?.value===buildingKey(record)):null}));
     const existing=[...area.querySelectorAll('.buildingrow')].some(r=>!blank(r));
     if(existing&&!confirm('기존 건물·층·거래대상 체크는 유지하고, 아직 입력하지 않은 대장 동만 추가합니다. 계속할까요?'))return;
+    const parcel=form.querySelector('.parcelrow');
+    // Fill a new blank parcel's address only. Existing parcels and land area are preserved.
+    if(parcel&&!['dong','main','sub','sqm'].some(n=>parcel.querySelector('[name='+n+']')?.value.trim())){
+     for(const [field,val] of [['dong',selected.dong],['main',selected.bun],['sub',selected.ji==='0'?'':selected.ji]])setInput(parcel.querySelector('[name='+field+']'),val);
+     const san=parcel.querySelector('[name=san]');if(san){san.checked=selected.platGbCd==='1';san.dispatchEvent(new Event('change',{bubbles:true}))}
+    }
     let added=0,skipped=0,floorsAdded=0,excluded=0;
     for(const item of plan){
      if(item.row){skipped++;continue}
