@@ -1193,6 +1193,7 @@ function lmScreenshotPanel(kind){const title=kind==='land'?'토지대장':'건�
 function lmScreenshotProposal(raw,kind){
  const t=normalizeExtractText(raw).replace(/성\s+명/g,'성명').replace(/소\s*유\s*자/g,'소유자');
  const v=kind==='land'?parseGovLandText(t):parseGovBuildingText(t);if(kind==='land'&&v.main&&!('sub' in v))v.sub='';
+ if(kind==='land'&&!v.landSqm){const area=t.match(/^(?:토지면적|면적)\s*[:：]\s*([\d,]+(?:\.\d+)?)(?:\s*(?:㎡|m[²2i]|m\^2))?\s*$/mi);if(area)v.landSqm=area[1].replace(/,/g,'')}
  const extra=parseBuildingLedgerFields(t);if(kind==='building')for(const k of ['buildingName','approvalDate'])if(extra[k])v[k]=extra[k];
  // A building's site area is not an individual parcel's area.
  if(kind==='building')delete v.landSqm;
