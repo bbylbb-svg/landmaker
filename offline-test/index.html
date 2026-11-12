@@ -1204,6 +1204,13 @@ function lmScreenshotProposal(raw,kind){
   const m=line.trim().match(/^(?:소유자(?:명)?|소유주(?:명)?|성명(?:\s*\(명칭\))?)\s*[:：]?\s+(.{1,55})$/)||line.trim().match(/^(?:소유자(?:명)?|소유주(?:명)?|성명(?:\s*\(명칭\))?)\s*[:：]\s*(.{1,55})$/);
   if(m){const name=m[1].trim();if(!/현황|등록번호|주소|변동|성명|지분|소유|\d{6}|[<>]/.test(name)&&!names.includes(name))names.push(name)}
  }
+ // Also accept a tight crop containing only a name column, never arbitrary body text.
+ if(!names.length){
+  const lines=t.split('\n').map(x=>x.trim()).filter(Boolean).filter(x=>!/^(?:성명(?:\s*\(명칭\))?|소유자(?:명)?)\s*[:：]?$/.test(x));
+  const stop=/토지대장|건축물대장|소유자|현황|등록번호|주소|지분|연명부|성명|지목|면적|발급|변동|공장|근린|과거|현재/;
+  const plausible=x=>!stop.test(x)&&!/[<>]|\d{6}/.test(x)&&(/^[가-힣]{2,5}$/.test(x.replace(/\s+/g,''))||(/주식회사|유한회사|\(주\)|㈜|재단법인|농업회사법인/.test(x)&&x.length<=45));
+  if(lines.length&&lines.length<=8&&lines.every(plausible))for(const line of lines)if(!names.includes(line))names.push(line);
+ }
  return {ownerName:names.join(', ')};
 }
 function bindScreenshotOCR(f){
