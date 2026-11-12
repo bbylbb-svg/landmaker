@@ -1159,8 +1159,8 @@ function bindAreaPairs(root){
 }
 function parcelRow(p={}){return `<div class="parcelrow" draggable="false"><div class="parcel-sortbar"><span class="parcel-drag" draggable="true" title="잡고 드래그하여 순서 변경" aria-label="필지 순서 변경">☰ 순서 이동</span><span class="parcel-rank"></span><div class="parcel-sortbuttons"><button type="button" class="alt parcelUp" title="위로 이동">↑</button><button type="button" class="alt parcelDown" title="아래로 이동">↓</button></div></div><label>행정동<input name="dong" placeholder="예: 과림동" value="${esc(p.dong)}" required></label><label>산 여부<span class="parcel-check"><input type="checkbox" name="san" ${p.san?'checked':''}> 산</span></label><label>본번<input name="main" placeholder="본번" value="${esc(p.main)}" required></label><label>부번<input name="sub" placeholder="부번" value="${esc(p.sub)}"></label><label>지목<input name="landUse" placeholder="지목" value="${esc(p.landUse)}"></label><label>면적 (평)<input data-parcel-py type="number" min="0" step="any" placeholder="평" value="${esc(pyeongOf(p.sqm))}"></label><label>면적 (㎡)<input name="sqm" type="number" min="0" step="any" placeholder="㎡" value="${esc(p.sqm)}"></label><label style="grid-column:1/-1">등기부상 명의 · 기존 소유주와 별도<input name="registryOwner" placeholder="등기부 원문에서 확인한 명의만 입력 · 토지 API 자동조회 미지원" value="${esc(p.registryOwner)}"></label><label style="grid-column:1/-1">등기부 확인일<input name="registryCheckedAt" type="date" value="${esc(p.registryCheckedAt)}"></label><div class="parcel-actions"><button type="button" class="alt removeParcel pillbutton">필지 삭제</button></div></div>`}
 function floorRow(x={}){return `<div class="lm-floor-row"><label>층 구분<input name="levelName" placeholder="예: 1층, 2층, 지하 1층" value="${esc(x.levelName||'')}"></label><label>해당 층 용도<input name="levelUse" placeholder="예: 공장, 사무실" value="${esc(x.levelUse||'')}"></label><label class="lm-level-check lm-level-check-sale"><input type="checkbox" name="levelForSale" ${x.forSale?'checked':''}> 매매 대상</label><label class="lm-level-check lm-level-check-lease"><input type="checkbox" name="levelForLease" ${x.forLease?'checked':''}> 임대 대상</label><label>면적 (평)<input data-level-py type="number" min="0" step="any" value="${esc(pyeongOf(x.sqm))}"></label><label>면적 (㎡)<input name="levelSqm" type="number" min="0" step="any" value="${esc(x.sqm||'')}"></label><button type="button" class="alt removeFloor">삭제</button></div>`}
-function buildingRow(b={}){return `<div class="buildingrow"><div class="building-grid"><label>건물동 / 명칭<input name="buildingName" value="${esc(b.buildingName)}" placeholder="A동, 주건물 등"></label><label>건물 용도<input name="buildingUse" value="${esc(b.buildingUse)}" placeholder="제조업소, 창고시설 등"></label><input type="hidden" name="footprintSqm" value="${esc(b.footprintSqm)}"><label class="lm-violation-check"><input type="checkbox" name="violation" ${b.violation?'checked':''}> 위반건축물</label><label>분양면적 (평)<input data-building-py="saleArea" type="number" min="0" step="any" value="${esc(pyeongOf(b.saleAreaSqm))}"></label><label>분양면적 (㎡)<input name="saleAreaSqm" type="number" min="0" step="any" value="${esc(b.saleAreaSqm)}"></label><label>사용승인일<input name="approvalDate" placeholder="YYYY-MM-DD" value="${esc(b.approvalDate)}"></label></div><div class="lm-floor-section"><b>이 건물동의 층별 정보</b><p class="muted">1층·2층·지하층을 각각 추가하세요. 층별 면적을 합산해 연면적을 계산합니다.</p><p class="muted">매매·임대 대상인 층만 체크하세요. 체크하지 않은 층은 거래 대상으로 표시하지 않습니다. 기존 데이터는 체크 상태가 비어 있습니다.</p><div class="lm-floor-rows">${(Array.isArray(b.levels)&&b.levels.length?b.levels:[{}]).map(floorRow).join('')}</div><button type="button" class="alt addFloor">+ 층 추가</button><div class="lm-building-floor-total">층별 연면적 합계: <strong>0.00평 (0㎡)</strong></div><div class="lm-legacy-floor" ${Array.isArray(b.levels)&&b.levels.length?'hidden':''}><label>기존 연면적 (㎡) · 층별 면적을 입력하면 자동으로 대체됩니다<input name="legacyFloorSqm" type="number" min="0" step="any" value="${esc(b.floorSqm)}"></label></div></div><div class="building-actions"><button type="button" class="alt removeBuilding">건물동 삭제</button></div></div>`}
-function parseBuildings(f){return [...f.querySelectorAll('.buildingrow')].map(r=>{const get=n=>r.querySelector('[name="'+n+'"]')?.value.trim()||'';const levels=[...r.querySelectorAll('.lm-floor-row')].map(z=>({levelName:z.querySelector('[name=levelName]').value.trim(),levelUse:z.querySelector('[name=levelUse]').value.trim(),forSale:z.querySelector('[name=levelForSale]').checked,forLease:z.querySelector('[name=levelForLease]').checked,sqm:z.querySelector('[name=levelSqm]').value.trim()})).filter(z=>z.levelName||z.levelUse||z.sqm);const floorSqm=levels.length?String(levels.reduce((n,z)=>n+(Number(z.sqm)||0),0)):get('legacyFloorSqm');return {buildingName:get('buildingName'),buildingUse:get('buildingUse'),structure:'',floors:levels.map(z=>z.levelName).filter(Boolean).join(', '),footprintSqm:get('footprintSqm'),violation:!!r.querySelector('[name=violation]')?.checked,saleAreaSqm:get('saleAreaSqm'),floorSqm,approvalDate:get('approvalDate'),levels}}).filter(b=>b.buildingName||b.buildingUse||b.footprintSqm||b.saleAreaSqm||b.floorSqm||b.approvalDate||b.levels.length)}
+function buildingRow(b={}){return `<div class="buildingrow"><input type="hidden" name="ledgerKey" value="${esc(b.ledgerKey)}"><div class="building-grid"><label>건물동 / 명칭<input name="buildingName" value="${esc(b.buildingName)}" placeholder="A동, 주건물 등"></label><label>건물 용도<input name="buildingUse" value="${esc(b.buildingUse)}" placeholder="제조업소, 창고시설 등"></label><input type="hidden" name="footprintSqm" value="${esc(b.footprintSqm)}"><label class="lm-violation-check"><input type="checkbox" name="violation" ${b.violation?'checked':''}> 위반건축물</label><label>분양면적 (평)<input data-building-py="saleArea" type="number" min="0" step="any" value="${esc(pyeongOf(b.saleAreaSqm))}"></label><label>분양면적 (㎡)<input name="saleAreaSqm" type="number" min="0" step="any" value="${esc(b.saleAreaSqm)}"></label><label>사용승인일<input name="approvalDate" placeholder="YYYY-MM-DD" value="${esc(b.approvalDate)}"></label></div><div class="lm-floor-section"><b>이 건물동의 층별 정보</b><p class="muted">1층·2층·지하층을 각각 추가하세요. 층별 면적을 합산해 연면적을 계산합니다.</p><p class="muted">매매·임대 대상인 층만 체크하세요. 체크하지 않은 층은 거래 대상으로 표시하지 않습니다. 기존 데이터는 체크 상태가 비어 있습니다.</p><div class="lm-floor-rows">${(Array.isArray(b.levels)&&b.levels.length?b.levels:[{}]).map(floorRow).join('')}</div><button type="button" class="alt addFloor">+ 층 추가</button><div class="lm-building-floor-total">층별 연면적 합계: <strong>0.00평 (0㎡)</strong></div><div class="lm-legacy-floor" ${Array.isArray(b.levels)&&b.levels.length?'hidden':''}><label>기존 연면적 (㎡) · 층별 면적을 입력하면 자동으로 대체됩니다<input name="legacyFloorSqm" type="number" min="0" step="any" value="${esc(b.floorSqm)}"></label></div></div><div class="building-actions"><button type="button" class="alt removeBuilding">건물동 삭제</button></div></div>`}
+function parseBuildings(f){return [...f.querySelectorAll('.buildingrow')].map(r=>{const get=n=>r.querySelector('[name="'+n+'"]')?.value.trim()||'';const levels=[...r.querySelectorAll('.lm-floor-row')].map(z=>({levelName:z.querySelector('[name=levelName]').value.trim(),levelUse:z.querySelector('[name=levelUse]').value.trim(),forSale:z.querySelector('[name=levelForSale]').checked,forLease:z.querySelector('[name=levelForLease]').checked,sqm:z.querySelector('[name=levelSqm]').value.trim()})).filter(z=>z.levelName||z.levelUse||z.sqm);const floorSqm=levels.length?String(levels.reduce((n,z)=>n+(Number(z.sqm)||0),0)):get('legacyFloorSqm');return {ledgerKey:get('ledgerKey'),buildingName:get('buildingName'),buildingUse:get('buildingUse'),structure:'',floors:levels.map(z=>z.levelName).filter(Boolean).join(', '),footprintSqm:get('footprintSqm'),violation:!!r.querySelector('[name=violation]')?.checked,saleAreaSqm:get('saleAreaSqm'),floorSqm,approvalDate:get('approvalDate'),levels}}).filter(b=>b.buildingName||b.buildingUse||b.footprintSqm||b.saleAreaSqm||b.floorSqm||b.approvalDate||b.levels.length)}
 function bindBuildings(){const f=$('#propertyForm');if(!f)return;const area=$('#buildingFields');function totals(){for(const r of area.querySelectorAll('.buildingrow')){const levels=[...r.querySelectorAll('.lm-floor-row')].filter(z=>z.querySelector('[name=levelName]').value.trim()||z.querySelector('[name=levelUse]').value.trim()||z.querySelector('[name=levelSqm]').value.trim());const sqm=levels.length?levels.reduce((n,z)=>n+(Number(z.querySelector('[name=levelSqm]').value)||0),0):Number(r.querySelector('[name=legacyFloorSqm]').value)||0;r.querySelector('.lm-building-floor-total strong').textContent=(sqm/PY).toFixed(2)+'평 ('+sqm.toLocaleString('ko-KR',{maximumFractionDigits:2})+'㎡)';r.querySelector('.lm-legacy-floor').hidden=levels.length>0}const list=parseBuildings(f),floor=list.reduce((n,b)=>n+(Number(b.floorSqm)||0),0),foot=list.reduce((n,b)=>n+(Number(b.footprintSqm)||0),0);$('#buildingTotal').innerHTML=`<div class="area-metric"><span>전체 건축면적 합계</span><b>${(foot/PY).toFixed(2)}평</b> <small>(${foot.toLocaleString('ko-KR',{maximumFractionDigits:2})}㎡)</small></div><div class="area-metric"><span>전체 연면적 합계 · ${list.length}개 동</span><b>${(floor/PY).toFixed(2)}평</b> <small>(${floor.toLocaleString('ko-KR',{maximumFractionDigits:2})}㎡)</small></div>`}area.addEventListener('input',e=>{const r=e.target.closest('.buildingrow');if(!r)return;const x=e.target;if(x.dataset.levelPy!==undefined){x.closest('.lm-floor-row').querySelector('[name=levelSqm]').value=sqmOf(x.value)}else if(x.name==='levelSqm'){x.closest('.lm-floor-row').querySelector('[data-level-py]').value=pyeongOf(x.value)}else if(x.dataset.buildingPy==='footprint'){r.querySelector('[name=footprintSqm]').value=sqmOf(x.value)}else if(x.name==='footprintSqm'){(()=>{const py=r.querySelector('[data-building-py=footprint]');if(py)py.value=pyeongOf(x.value)})()}else if(x.dataset.buildingPy==='saleArea'){r.querySelector('[name=saleAreaSqm]').value=sqmOf(x.value)}else if(x.name==='saleAreaSqm'){r.querySelector('[data-building-py=saleArea]').value=pyeongOf(x.value)}totals()});area.addEventListener('click',e=>{const t=e.target;if(t.classList.contains('addFloor')){t.closest('.buildingrow').querySelector('.lm-floor-rows').insertAdjacentHTML('beforeend',floorRow());totals()}else if(t.classList.contains('removeFloor')){t.closest('.lm-floor-row').remove();totals()}else if(t.classList.contains('removeBuilding')){if(area.children.length===1){alert('건물이 없는 토지 매물은 건물정보를 빈칸으로 두세요.');return}t.closest('.buildingrow').remove();totals()}});$('#addBuilding').onclick=()=>{area.insertAdjacentHTML('beforeend',buildingRow());totals()};totals()}
 
 function ownerRow(o={},kind='land'){return `<div class="ownerrow" data-kind="${kind}" style="border:1px solid #cbd8df;border-radius:9px;padding:12px;margin:9px 0"><div class="grid"><label>소유주명<input name="ownerNameItem" value="${esc(o.name)}"></label><label>통합 인물코드<select name="ownerPersonCodeItem">${personOptions(o.personCode)}</select></label><label>생년월일<input name="ownerBirthItem" placeholder="YYYY-MM-DD" value="${esc(o.birth)}"></label><label>주소<input name="ownerAddressItem" value="${esc(o.address)}"></label><label>연락처<input name="ownerPhoneItem" value="${esc(o.phone)}"></label><label>지분<input name="ownerShareItem" placeholder="예: 1/2, 50%" value="${esc(o.share)}"></label></div><div data-person-candidates class="area-summary"></div><button type="button" class="alt removeOwner" style="margin-top:8px">이 소유주 삭제</button></div>`}
@@ -2472,7 +2472,7 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent){
 </style>
 <script>
 (()=>{
- const endpoint='https://borshzgpwtuukryiotia.supabase.co/functions/v1/landmaker-building';
+ const endpoint='https://borshzgpwtuukryiotia.supabase.co/functions/v1/landmaker-building?forceFunctionRegion=ap-northeast-2';
 
  const $=id=>document.getElementById(id);
  function message(msg){if($('lmBldStatus'))$('lmBldStatus').textContent=msg}
@@ -2490,59 +2490,99 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent){
  function ensureWidget(){
    const form=document.querySelector('#propertyForm');if(!form||form.dataset.lmBldBound==='1')return;
    const $=id=>form.querySelector('#'+id);
+   if(!['lmBldBox','lmBldAddress','lmBldFetch','lmBldApply','lmBldSelected','lmBldStatus','lmBldPreview','buildingFields','addBuilding'].every(id=>$(id)))return;
    // Place the two lookups directly above their respective data-entry sections.
    const landHeading=[...form.querySelectorAll('h3')].find(h=>h.textContent.includes('④ 토지정보'));
    const buildingHeading=[...form.querySelectorAll('h3')].find(h=>h.textContent.includes('⑤ 건물정보'));
    const parcelLookup=$('lmParcelLookup'), buildingLookup=$('lmBldBox');
    if(landHeading&&parcelLookup)landHeading.before(parcelLookup);
    if(buildingHeading&&buildingLookup)buildingHeading.before(buildingLookup);
-   let selected=null,records=[],requestId=0;
+   let selected=null,records=[],floorRecords=[],floorWarning='',requestId=0;
    const message=msg=>{if(form.isConnected&&$('lmBldStatus'))$('lmBldStatus').textContent=msg};
    const lookup=async(type,address)=>{
-    if(typeof ensureFreshAuth==='function')await ensureFreshAuth();
-    if(typeof authToken==='undefined'||!authToken)throw Error('랜드메이커에 로그인해 주세요.');
-    const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer '+authToken},body:JSON.stringify({...address,type})});
-    const data=await res.json().catch(()=>({error:'서버 응답을 해석할 수 없습니다.'}));
-    if(!res.ok||!data.success)throw Error('HTTP '+res.status+' · '+(data.error||data.message||'조회 실패')+(data.resultCode?' ['+data.resultCode+']':'')+(data.resultMsg?' · '+data.resultMsg:''));
-    const body=data.data||{},raw=body.items?.item??body.items??[];return Array.isArray(raw)?raw:raw&&typeof raw==='object'?[raw]:[];
+    const rows=[];let previous='';
+    for(let pageNo=1;pageNo<=100;pageNo++){
+     if(!form.isConnected)throw Error('입력창이 닫혔습니다.');
+     if(typeof ensureFreshAuth==='function')await ensureFreshAuth();
+     if(typeof authToken==='undefined'||!authToken)throw Error('랜드메이커에 로그인해 주세요.');
+     const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer '+authToken},body:JSON.stringify({...address,type,pageNo})});
+     const data=await res.json().catch(()=>({error:'서버 응답을 해석할 수 없습니다.'}));
+     if(!res.ok||!data.success)throw Error('HTTP '+res.status+' · '+(data.error||data.message||'조회 실패')+(data.upstreamStatus?' · 원본 HTTP '+data.upstreamStatus:'')+(data.resultCode?' ['+data.resultCode+']':'')+(data.resultMsg?' · '+data.resultMsg:''));
+     const body=data.data||{},raw=body.items?.item??body.items??[],items=Array.isArray(raw)?raw:raw&&typeof raw==='object'?[raw]:[];
+     const signature=JSON.stringify(items);
+     if(items.length&&signature===previous)throw Error('API가 같은 페이지를 반복 반환하여 입력을 중단했습니다.');
+     previous=signature;rows.push(...items);
+     const total=Number(body.totalCount),hasTotal=body.totalCount!=null&&Number.isFinite(total);
+     if(hasTotal&&rows.length>=total)return rows;
+     if(!items.length){if(hasTotal&&rows.length<total)throw Error('API 일부 페이지가 누락되었습니다.');return rows}
+     if(!hasTotal&&items.length<100)return rows;
+    }
+    throw Error('조회 건수가 안전 한도를 초과했습니다.');
    };
-   const box=document.createElement('div');box.id='lmBldBox';box.innerHTML=`<b>🏢 건축물대장 주소조회 · 매물 자동입력 (시험판)</b><p class="lm-bld-hint">주소 검색 → 건축물대장 조회 → 결과 확인 → 현재 매물 입력칸에 반영 (서버 자동저장 없음)</p><button type="button" id="lmBldAddress">주소 검색</button><span id="lmBldSelected">주소 미선택</span><div><button type="button" id="lmBldFetch" disabled>건축물대장 조회</button><button type="button" id="lmBldApply" disabled>조회 결과 매물에 입력</button></div><div class="lm-bld-hint" id="lmBldStatus" role="status">매물등록에서 주소를 먼저 검색하세요.</div><pre id="lmBldPreview"></pre><hr><b>📋 토지·등기 통합 확인 (1차 시험)</b><p class="lm-bld-hint">건축물대장 조회는 위 버튼으로 진행합니다. 토지정보·토지이음·등기는 공식 사이트 또는 원문으로 확인하세요. 자동 API 연결 전이며 조회되지 않은 값을 임의로 채우지 않습니다.</p><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="lmLandEum">토지이음 열기</button><button type="button" id="lmLandGov">토지대장 발급 안내</button><button type="button" id="lmLandRegistry">등기 열람 사이트</button></div><label style="display:block;margin-top:10px">등기·토지대장 파일 선택 (현재는 로컬 파일명 확인만 가능)<input type="file" id="lmLandDocs" accept=".pdf,.png,.jpg,.jpeg" multiple></label><p class="lm-bld-hint" id="lmLandDocStatus">선택한 파일은 서버에 전송되지 않습니다. 자동 문서 추출은 아직 미구현입니다.</p>`;
-   if(!form.querySelector('#lmBldBox'))form.insertBefore(box,form.firstChild);
+   const buildingKey=r=>value(r,['mgmBldrgstPk']);
+   const buildingName=r=>value(r,['dongNm','bldNm']);
+   const floorOwner=r=>{
+    const pk=buildingKey(r);if(pk)return records.find(t=>buildingKey(t)===pk);
+    const name=value(r,['dongNm']);if(!name)return null;
+    const candidates=records.filter(t=>value(t,['dongNm'])===name);
+    return candidates.length===1?candidates[0]:null;
+   };
+   const floorsFor=r=>floorRecords.filter(z=>floorOwner(z)===r);
+   const floorName=r=>{
+    const name=value(r,['flrNoNm']),kind=value(r,['flrGbCdNm']);
+    if(name)return /지하|옥탑/.test(kind)&&!name.includes(kind)?kind+' '+name:name;
+    const no=value(r,['flrNo']);return no?(kind==='지상'?'':kind+' ')+no+'층':kind;
+   };
    selected=null;records=[];
-   $('lmBldAddress').onclick=async()=>{try{await window.lmOpenPostcode(v=>{try{requestId++;selected=null;records=[];$('lmBldFetch').disabled=true;$('lmBldApply').disabled=true;$('lmBldPreview').textContent='';selected=parseAddress(v);$('lmBldSelected').textContent=selected.addr;$('lmBldFetch').disabled=false;message('주소 선택 완료 · 조회를 눌러주세요.')}catch(e){message(e.message)}},()=>form.isConnected)}catch(e){message(e.message)}};
-   $('lmBldFetch').onclick=async()=>{if(!selected)return;const btn=$('lmBldFetch'),ticket=++requestId,address={...selected};btn.disabled=true;$('lmBldAddress').disabled=true;$('lmBldApply').disabled=true;records=[];message('표제부 조회 중...');try{const found=await lookup('title',address);if(!form.isConnected||ticket!==requestId)return;records=found;$('lmBldPreview').textContent=JSON.stringify(records.map(r=>({동명:value(r,['bldNm','dongNm']),주용도:value(r,['mainPurpsCdNm']),대지면적:value(r,['platArea']),건축면적:value(r,['archArea']),연면적:value(r,['totArea']),사용승인일:value(r,['useAprDay'])})),null,2);$('lmBldApply').disabled=!records.length;message(records.length?`${records.length}건 조회됨. 여러 건물인 경우 현재는 첫 번째 건물만 입력합니다. 적용 전에 확인하세요.`:'조회된 건축물대장이 없습니다.')}catch(e){message('조회 실패: '+e.message)}finally{if(form.isConnected&&ticket===requestId){btn.disabled=false;$('lmBldAddress').disabled=false}}};
+   $('lmBldAddress').onclick=async()=>{try{await window.lmOpenPostcode(v=>{try{requestId++;selected=null;records=[];floorRecords=[];floorWarning='';$('lmBldFetch').disabled=true;$('lmBldApply').disabled=true;$('lmBldPreview').textContent='';selected=parseAddress(v);$('lmBldSelected').textContent=selected.addr;$('lmBldFetch').disabled=false;message('주소 선택 완료 · 조회를 눌러주세요.')}catch(e){message(e.message)}},()=>form.isConnected)}catch(e){message(e.message)}};
+   $('lmBldFetch').onclick=async()=>{
+    if(!selected)return;
+    const btn=$('lmBldFetch'),ticket=++requestId,address={...selected};
+    btn.disabled=true;$('lmBldAddress').disabled=true;$('lmBldApply').disabled=true;
+    records=[];floorRecords=[];floorWarning='';message('표제부·층별개요 조회 중...');
+    try{
+     const found=await lookup('title',address);if(!form.isConnected||ticket!==requestId)return;
+     records=found.filter((r,i,all)=>all.findIndex(t=>buildingKey(r)?buildingKey(t)===buildingKey(r):JSON.stringify(t)===JSON.stringify(r))===i);
+     if(records.length){try{floorRecords=await lookup('floor',address)}catch(e){floorWarning='층별 조회 실패: '+e.message}}
+     if(!form.isConnected||ticket!==requestId)return;
+     const unmatched=floorRecords.filter(r=>!floorOwner(r)).length;
+     $('lmBldPreview').textContent=JSON.stringify(records.map(r=>({동명:buildingName(r),주용도:value(r,['mainPurpsCdNm']),건축면적:value(r,['archArea']),연면적:value(r,['totArea']),사용승인일:value(r,['useAprDay']),층별정보:floorsFor(r).map(z=>({층:floorName(z),용도:value(z,['etcPurps','mainPurpsCdNm']),면적:value(z,['area'])}))})),null,2);
+     $('lmBldApply').disabled=!records.length;
+     message(records.length?records.length+'개 동 · 층별 '+floorRecords.length+'건 조회. '+(floorWarning||'동별로 구분하여 입력합니다.')+(unmatched?' 동 구분 불확실 '+unmatched+'건은 자동입력하지 않습니다.':''):'조회된 건축물대장이 없습니다.');
+    }catch(e){records=[];floorRecords=[];message('조회 실패: '+e.message)}
+    finally{if(form.isConnected&&ticket===requestId){btn.disabled=false;$('lmBldAddress').disabled=false}}
+   };
    $('lmBldApply').onclick=()=>{
-     const f=document.querySelector('#propertyForm');
-     if(!f||!records.length||!selected)return;
-     const parcel=f.querySelector('.parcelrow'), area=f.querySelector('#buildingFields');
-     if(!parcel||!area){message('매물 입력칸을 찾지 못했습니다.');return}
-     const unique=[];
-     for(const record of records){
-       const name=value(record,['bldNm','dongNm']).trim();
-       const key=[name,value(record,['mainPurpsCdNm']),value(record,['totArea']),value(record,['archArea'])].join('|');
-       if(!unique.some(x=>x.key===key))unique.push({record,name,key});
-     }
-     const existing=[...area.querySelectorAll('.buildingrow')];
-     const isBlank=row=>!['buildingName','buildingUse','footprintSqm','legacyFloorSqm','approvalDate'].some(n=>row.querySelector('[name='+n+']')?.value?.trim())&&!row.querySelector('.lm-floor-row [name=levelName]')?.value?.trim();
-     const empty=existing.filter(isBlank);
-     if(existing.length>empty.length && !confirm('이미 입력된 건물동 정보가 있습니다. 기존 건물동은 유지하고 조회된 동을 추가할까요?'))return;
-     const parcelFields=[['행정동',parcel.querySelector('[name=dong]'),selected.dong],['본번',parcel.querySelector('[name=main]'),selected.bun],['부번',parcel.querySelector('[name=sub]'),selected.ji==='0'?'':selected.ji],['대지면적',parcel.querySelector('[name=sqm]'),value(unique[0].record,['platArea'])]];
-     const conflicts=parcelFields.filter(([_,el,v])=>el&&v&&el.value.trim()&&el.value.trim()!==v);
-     if(conflicts.length&&!confirm('기존 '+conflicts.map(x=>x[0]).join(', ')+' 값을 조회값으로 바꿀까요?'))return;
-     for(const [_,el,v] of parcelFields)setInput(el,v);
-     const san=parcel.querySelector('[name=san]');if(san){san.checked=selected.platGbCd==='1';san.dispatchEvent(new Event('change',{bubbles:true}))}
-     let added=0,updated=0;
-     for(const {record,name} of unique){
-       const current=[...area.querySelectorAll('.buildingrow')];
-       const match=current.find(row=>name&&row.querySelector('[name=buildingName]')?.value.trim()===name);
-       let row=match||current.find(isBlank);
-       if(!row){f.querySelector('#addBuilding')?.click();row=[...area.querySelectorAll('.buildingrow')].at(-1);added++}
-       if(!row)continue;
-       const fields=[['buildingName',name],['buildingUse',value(record,['mainPurpsCdNm'])],['footprintSqm',value(record,['archArea'])],['legacyFloorSqm',value(record,['totArea'])],['approvalDate',value(record,['useAprDay']).replace(/^(\\d{4})(\\d{2})(\\d{2})$/,'$1-$2-$3')]];
-       for(const [field,val] of fields)setInput(row.querySelector('[name='+field+']'),val);
-       updated++;
-     }
-     message(updated+'개 건물동을 현재 매물에 반영했습니다. 기존 층별 정보는 유지됩니다. 동별 면적과 거래 대상을 확인해 주세요.');
+    if(!form.isConnected||!records.length||!selected)return;
+    const area=$('buildingFields');if(!area){message('건물 입력칸을 찾지 못했습니다.');return}
+    const blank=row=>![...row.querySelectorAll('input')].some(e=>e.type==='checkbox'?e.checked:e.value.trim());
+    // Imported records have stable ledger IDs. Never overwrite a manually entered building.
+    const plan=records.map(record=>({record,row:buildingKey(record)?[...area.querySelectorAll('.buildingrow')].find(r=>r.querySelector('[name=ledgerKey]')?.value===buildingKey(record)):null}));
+    const existing=[...area.querySelectorAll('.buildingrow')].some(r=>!blank(r));
+    if(existing&&!confirm('기존 건물·층·거래대상 체크는 유지하고, 아직 입력하지 않은 대장 동만 추가합니다. 계속할까요?'))return;
+    let added=0,skipped=0,floorsAdded=0,excluded=0;
+    for(const item of plan){
+     if(item.row){skipped++;continue}
+     const record=item.record;let row=[...area.querySelectorAll('.buildingrow')].find(blank);
+     if(!row){$('addBuilding').click();row=[...area.querySelectorAll('.buildingrow')].at(-1)}
+     if(!row)continue;
+     for(const [field,val] of [['ledgerKey',buildingKey(record)],['buildingName',buildingName(record)],['buildingUse',value(record,['mainPurpsCdNm'])],['footprintSqm',value(record,['archArea'])],['legacyFloorSqm',value(record,['totArea'])],['approvalDate',value(record,['useAprDay']).replace(/^(\d{4})(\d{2})(\d{2})$/,'$1-$2-$3')]])setInput(row.querySelector('[name='+field+']'),val);
+     const floors=floorsFor(record);
+     // An incomplete/excluded floor list must not replace the official title total.
+     const titleTotal=Number(value(record,['totArea']));
+     const complete=floors.length&&floors.every(z=>value(z,['area'])!==''&&Number.isFinite(Number(z.area))&&Number(z.area)>=0)&&Math.abs(floors.reduce((n,z)=>n+Number(z.area),0)-titleTotal)<0.05;
+     if(complete){
+      for(let i=0;i<floors.length;i++){
+       if(i)row.querySelector('.addFloor').click();
+       const target=[...row.querySelectorAll('.lm-floor-row')].at(-1),z=floors[i];
+       setInput(target.querySelector('[name=levelName]'),floorName(z));
+       setInput(target.querySelector('[name=levelUse]'),value(z,['etcPurps','mainPurpsCdNm']));
+       setInput(target.querySelector('[name=levelSqm]'),value(z,['area']));floorsAdded++;
+      }
+     }else if(floors.length)excluded++;
+     added++;
+    }
+    message(added+'개 동·층별 '+floorsAdded+'건 입력, 기존 대장 동 '+skipped+'개 유지. '+(excluded?excluded+'개 동은 층면적 합계가 표제부와 달라 자동입력을 보류했습니다. ':'')+(floorWarning?floorWarning+' · ':'')+'저장 전 동별 면적·거래대상을 확인하세요. 토지정보는 토지대장 버튼으로 입력하세요.');
    };
    form.dataset.lmBldBound='1';
  }
