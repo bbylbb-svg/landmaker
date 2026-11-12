@@ -1987,10 +1987,11 @@ function lmCapturePropertyDraft(){
  try{localStorage.setItem(LM_PROPERTY_DRAFT_KEY,JSON.stringify({at:Date.now(),fields,editingId:editing?.id||'',tab}));}catch(err){console.warn('매물 임시저장 실패',err)}
 }
 function lmRestorePropertyDraft(){
- const f=document.querySelector('#propertyForm');if(!f||lmPropertyRestoring||window.lmPropertyDraftDirty)return;
+ const f=document.querySelector('#propertyForm');if(!f||f.dataset.lmDraftRestoreAsked==='1'||lmPropertyRestoring||window.lmPropertyDraftDirty)return;
  let d;try{d=JSON.parse(localStorage.getItem(LM_PROPERTY_DRAFT_KEY)||'null')}catch{return}
  if(!d||!d.fields||Date.now()-d.at>7*86400000)return;
  if((d.editingId||'')!==(editing?.id||''))return;
+ f.dataset.lmDraftRestoreAsked='1';
  lmPropertyRestoring=true;
  try{
   if(!confirm('저장하지 못한 매물 입력내용이 발견되었습니다. 복원할까요?'))return;
