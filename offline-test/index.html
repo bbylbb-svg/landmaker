@@ -2490,6 +2490,12 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent){
  function ensureWidget(){
    const form=document.querySelector('#propertyForm');if(!form||form.dataset.lmBldBound==='1')return;
    const $=id=>form.querySelector('#'+id);
+   // Place the two lookups directly above their respective data-entry sections.
+   const landHeading=[...form.querySelectorAll('h3')].find(h=>h.textContent.includes('④ 토지정보'));
+   const buildingHeading=[...form.querySelectorAll('h3')].find(h=>h.textContent.includes('⑤ 건물정보'));
+   const parcelLookup=$('lmParcelLookup'), buildingLookup=$('lmBldBox');
+   if(landHeading&&parcelLookup)landHeading.before(parcelLookup);
+   if(buildingHeading&&buildingLookup)buildingHeading.before(buildingLookup);
    let selected=null,records=[],requestId=0;
    const message=msg=>{if(form.isConnected&&$('lmBldStatus'))$('lmBldStatus').textContent=msg};
    const lookup=async(type,address)=>{
@@ -2506,15 +2512,37 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent){
    $('lmBldAddress').onclick=async()=>{try{await window.lmOpenPostcode(v=>{try{requestId++;selected=null;records=[];$('lmBldFetch').disabled=true;$('lmBldApply').disabled=true;$('lmBldPreview').textContent='';selected=parseAddress(v);$('lmBldSelected').textContent=selected.addr;$('lmBldFetch').disabled=false;message('주소 선택 완료 · 조회를 눌러주세요.')}catch(e){message(e.message)}},()=>form.isConnected)}catch(e){message(e.message)}};
    $('lmBldFetch').onclick=async()=>{if(!selected)return;const btn=$('lmBldFetch'),ticket=++requestId,address={...selected};btn.disabled=true;$('lmBldAddress').disabled=true;$('lmBldApply').disabled=true;records=[];message('표제부 조회 중...');try{const found=await lookup('title',address);if(!form.isConnected||ticket!==requestId)return;records=found;$('lmBldPreview').textContent=JSON.stringify(records.map(r=>({동명:value(r,['bldNm','dongNm']),주용도:value(r,['mainPurpsCdNm']),대지면적:value(r,['platArea']),건축면적:value(r,['archArea']),연면적:value(r,['totArea']),사용승인일:value(r,['useAprDay'])})),null,2);$('lmBldApply').disabled=!records.length;message(records.length?`${records.length}건 조회됨. 여러 건물인 경우 현재는 첫 번째 건물만 입력합니다. 적용 전에 확인하세요.`:'조회된 건축물대장이 없습니다.')}catch(e){message('조회 실패: '+e.message)}finally{if(form.isConnected&&ticket===requestId){btn.disabled=false;$('lmBldAddress').disabled=false}}};
    $('lmBldApply').onclick=()=>{
-      const f=document.querySelector('#propertyForm');if(!f||!records.length||!selected)return;
-      const r=records[0];const parcel=f.querySelector('.parcelrow');const building=f.querySelector('.buildingrow');
-      if(!parcel||!building){message('매물 입력칸을 찾지 못했습니다.');return}
-      const proposed=[['행정동',parcel.querySelector('[name=dong]'),selected.dong],['본번',parcel.querySelector('[name=main]'),selected.bun],['부번',parcel.querySelector('[name=sub]'),selected.ji==='0'?'':selected.ji],['대지면적',parcel.querySelector('[name=sqm]'),value(r,['platArea'])],['건물명',building.querySelector('[name=buildingName]'),value(r,['bldNm','dongNm'])],['주용도',building.querySelector('[name=buildingUse]'),value(r,['mainPurpsCdNm'])],['건축면적',building.querySelector('[name=footprintSqm]'),value(r,['archArea'])],['연면적',building.querySelector('[name=legacyFloorSqm]'),value(r,['totArea'])],['사용승인일',building.querySelector('[name=approvalDate]'),value(r,['useAprDay']).replace(/^(\d{4})(\d{2})(\d{2})$/,'$1-$2-$3')]];
-      const conflicts=proposed.filter(([_,el,v])=>el&&v&&el.value.trim()&&el.value.trim()!==v);
-      if(conflicts.length&&!confirm('기존 입력값 '+conflicts.map(x=>x[0]).join(', ')+'을(를) 조회값으로 변경할까요?'))return;
-      for(const [_,el,v] of proposed)setInput(el,v);
-      const san=parcel.querySelector('[name=san]');if(san){san.checked=selected.platGbCd==='1';san.dispatchEvent(new Event('change',{bubbles:true}))}
-      message('현재 매물 입력칸에 반영했어. 저장 전 면적·건물동·층별 정보와 실제 거래 대상을 확인해 줘.');
+     const f=document.querySelector('#propertyForm');
+     if(!f||!records.length||!selected)return;
+     const parcel=f.querySelector('.parcelrow'), area=f.querySelector('#buildingFields');
+     if(!parcel||!area){message('매물 입력칸을 찾지 못했습니다.');return}
+     const unique=[];
+     for(const record of records){
+       const name=value(record,['bldNm','dongNm']).trim();
+       const key=[name,value(record,['mainPurpsCdNm']),value(record,['totArea']),value(record,['archArea'])].join('|');
+       if(!unique.some(x=>x.key===key))unique.push({record,name,key});
+     }
+     const existing=[...area.querySelectorAll('.buildingrow')];
+     const isBlank=row=>!['buildingName','buildingUse','footprintSqm','legacyFloorSqm','approvalDate'].some(n=>row.querySelector('[name='+n+']')?.value?.trim())&&!row.querySelector('.lm-floor-row [name=levelName]')?.value?.trim();
+     const empty=existing.filter(isBlank);
+     if(existing.length>empty.length && !confirm('이미 입력된 건물동 정보가 있습니다. 기존 건물동은 유지하고 조회된 동을 추가할까요?'))return;
+     const parcelFields=[['행정동',parcel.querySelector('[name=dong]'),selected.dong],['본번',parcel.querySelector('[name=main]'),selected.bun],['부번',parcel.querySelector('[name=sub]'),selected.ji==='0'?'':selected.ji],['대지면적',parcel.querySelector('[name=sqm]'),value(unique[0].record,['platArea'])]];
+     const conflicts=parcelFields.filter(([_,el,v])=>el&&v&&el.value.trim()&&el.value.trim()!==v);
+     if(conflicts.length&&!confirm('기존 '+conflicts.map(x=>x[0]).join(', ')+' 값을 조회값으로 바꿀까요?'))return;
+     for(const [_,el,v] of parcelFields)setInput(el,v);
+     const san=parcel.querySelector('[name=san]');if(san){san.checked=selected.platGbCd==='1';san.dispatchEvent(new Event('change',{bubbles:true}))}
+     let added=0,updated=0;
+     for(const {record,name} of unique){
+       const current=[...area.querySelectorAll('.buildingrow')];
+       const match=current.find(row=>name&&row.querySelector('[name=buildingName]')?.value.trim()===name);
+       let row=match||current.find(isBlank);
+       if(!row){f.querySelector('#addBuilding')?.click();row=[...area.querySelectorAll('.buildingrow')].at(-1);added++}
+       if(!row)continue;
+       const fields=[['buildingName',name],['buildingUse',value(record,['mainPurpsCdNm'])],['footprintSqm',value(record,['archArea'])],['legacyFloorSqm',value(record,['totArea'])],['approvalDate',value(record,['useAprDay']).replace(/^(\\d{4})(\\d{2})(\\d{2})$/,'$1-$2-$3')]];
+       for(const [field,val] of fields)setInput(row.querySelector('[name='+field+']'),val);
+       updated++;
+     }
+     message(updated+'개 건물동을 현재 매물에 반영했습니다. 기존 층별 정보는 유지됩니다. 동별 면적과 거래 대상을 확인해 주세요.');
    };
    form.dataset.lmBldBound='1';
  }
