@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),Q=require('./offline-query.js');
+const rows=Array.from({length:1205},(_,i)=>({id:String(i),source_table:i%2?'기본자료':'고객매매',source_row_number:i,original_data:{주소:'과림동 '+i,이름:'검증 고객 '+i},created_at:i%3?String(1205-i):null}));
+const before=JSON.stringify(rows);
+assert.equal(Q.select(rows,{source_table:'eq.기본자료'},false).length,602);
+assert.equal(Q.select(rows,{source_table:'in.("기본자료","고객매매")',limit:'1000',offset:'1000'}).length,205);
+assert.equal(Q.select(rows,{order:'source_row_number.desc',limit:'1'})[0].source_row_number,1204);
+assert.equal(Q.select(rows,{'original_data->>주소':'ilike.*과림동 12*'},false).length,16);
+assert.equal(Q.select([{title:'가나다',body:'상담내용'},{title:'다른 제목',body:'빈 내용'}],{or:'(title.ilike.*가나*,body.ilike.*상담*)'}).length,1);
+assert.equal(Q.select([{a:null},{a:'x'}],{a:'not.is.null'}).length,1);
+assert.equal(Q.select([{a:1},{a:3}],{a:'gte.2'}).length,1);
+assert.equal(Q.select([{a:'a.b'},{a:'axb'}],{a:'ilike.a.b'}).length,1);
+assert.equal(Q.rpc({lm_import_rows:rows},'lm_search_access_customers',{p_query:'과림동 12',p_limit:1000}).length,9);
+const notes=[{source_page_id:'a',section:'임차',title:'공장',body_text:'010-1234-5678',page_created_at:'2026-11-01'},{source_page_id:'b',section:'매수',title:'다른 자료',body_text:'토지',page_created_at:null}];
+assert.equal(Q.rpc({lm_onenote_pages:notes},'lm_search_onenote_pages',{p_query:'01012345678',p_section:'임차'})[0].source_page_id,'a');
+assert.equal(Q.rpc({lm_onenote_pages:notes},'lm_search_onenote_pages',{p_query:'토지',p_section:'임차'}).length,0);
+assert.equal(JSON.stringify(rows),before,'local filtering must not alter Access source rows');
+assert.throws(()=>Q.select(rows,{source_table:'unsupported.x'}));
+console.log('Passed: Access/OneNote search, quoted IN filters, numeric order, pagination, OR, JSON fields, literal punctuation, nulls and source immutability.');
