@@ -678,7 +678,7 @@ function homeView(){
 }
 // 통합 인물코드: 동일인 자동 병합 금지, 직원이 기존 코드를 선택한 경우에만 연결.
 function peopleIndex(){const m=new Map();const add=(x,kind,where)=>{if(!x||!x.personCode)return;const code=x.personCode;let a=m.get(code);if(!a){a={code,names:new Set(),phones:new Set(),births:new Set(),addresses:new Set(),places:new Set(),kinds:new Set()};m.set(code,a)}if(x.name)a.names.add(x.name.trim());if(x.phone)a.phones.add(x.phone.replace(/\D/g,''));if(x.birth)a.births.add(x.birth.replace(/\D/g,''));if(x.address)a.addresses.add(x.address.replace(/\s/g,''));if(where)a.places.add(where);a.kinds.add(kind)};db.customers.forEach(c=>add(c,'고객',''));db.properties.forEach(p=>{const place=(p.parcels||[]).map(formatLot).filter(Boolean).join(', ');[...(p.landOwners||[]),...(p.buildingOwners||[])].forEach(o=>add(o,'소유주',place))});return [...m.values()]}
-function newPersonCode(){const used=new Set(peopleIndex().map(x=>x.code));let n=1;while(used.has('P-'+String(n).padStart(6,'0')))n++;return 'P-'+String(n).padStart(6,'0')}
+function newPersonCode(){return 'P-'+crypto.randomUUID()}
 function candidatePeople(name,phone,birth,address,exclude=''){const n=(name||'').trim(),ph=(phone||'').replace(/\D/g,''),b=(birth||'').replace(/\D/g,''),a=(address||'').replace(/\s/g,'');return peopleIndex().filter(x=>x.code!==exclude&&n&&x.names.has(n)).map(x=>{const reasons=[];if(ph.length>=8&&x.phones.has(ph))reasons.push('연락처 일치');if(b.length>=8&&x.births.has(b))reasons.push('생년월일 일치');if(a.length>=6&&x.addresses.has(a))reasons.push('소유주 주소 일치');return {...x,reasons}}).filter(x=>x.reasons.length).sort((a,b)=>b.reasons.length-a.reasons.length)}
 function personCandidateHtml(code,name,phone,birth,address){const candidates=candidatePeople(name,phone,birth,address,code);return candidates.length?'<div class="muted">동일인 후보 (자동 연결되지 않음): '+candidates.map(x=>esc(x.code)+' · '+esc(x.reasons.join('/'))+' · 연결 필지 '+esc([...x.places].join('; ')||'없음')).join(' | ')+'</div>':'<div class="muted">확인 가능한 동일인 후보 없음. 이름만 같으면 자동 연결하지 않습니다.</div>'}
 function personOptions(current=''){return '<option value="">새 인물코드 발급 (저장 시)</option>'+(current?`<option value="${esc(current)}" selected>${esc(current)} · 현재 연결 코드</option>`:'')}
@@ -2338,7 +2338,7 @@ window.lmCacheSnapshot=function(data,version,archives){
 window.lmEnsureOfflineArchives=async function(force=false){if(lmSyncSandbox)return;
  if(lmLocalArchiveBusy||window.lmOfflineMode||!navigator.onLine||!cloudReady||!authToken)return;
  lmLocalArchiveBusy=true;
- try{await lmLocalQueue.catch(()=>{});const old=await lmLocalRead();if(!force&&old?.archives?.completedAt&&Date.now()-Date.parse(old.archives.completedAt)<6*60*60*1000)return;if(typeof window.lmBackupToPC!=='function')return;await window.lmBackupToPC(db,cloudVersion)}
+ try{await lmLocalQueue.catch(()=>{});const old=await lmLocalRead();if(!force&&old?.archives?.tables?.lm_new_properties&&old?.archives?.completedAt&&Date.now()-Date.parse(old.archives.completedAt)<6*60*60*1000)return;if(typeof window.lmBackupToPC!=='function')return;await window.lmBackupToPC(db,cloudVersion)}
  catch(e){lmLocalStatus('기본 PC 사본 유지 · 엑세스·원노트 준비 실패: '+e.message)}finally{lmLocalArchiveBusy=false}
 };
 function lmLocalClean(x){return String(x??'').replace(/<br\s*\/?\s*>|<\/p>|<\/div>/gi,'\n').replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')}
@@ -2351,7 +2351,7 @@ function lmLocalEntries(snapshot,kind){
  const consultations=new Map();for(const n of tables.lm_access_customer_consultations||[]){const k=String(n.import_row_id);if(!consultations.has(k))consultations.set(k,[]);consultations.get(k).push(n)}
  const edits=new Map((tables[kind==='properties'?'lm_access_property_edits':'lm_access_customer_profiles']||[]).map(x=>[String(x.source_id??x.import_row_id),x]));
  for(const row of tables.lm_import_rows||[]){const isCustomer=/고객/.test(row.source_table||'');if(kind==='customers'?!isCustomer:!/^기본자료[0-9]*$/.test(row.source_table||''))continue;const data=row.original_data||{},value={원본:row,...(edits.has(String(row.id))?{수정자료:edits.get(String(row.id))}:{}),...(isCustomer?{상담기록:consultations.get(String(row.id))||[]}:{} )};const title=['고객명','성명','상호','이름','매물명','소재지','지번','주소','토지소재지'].map(k=>data[k]).find(x=>typeof x==='string'&&x.trim());add(isCustomer?'엑세스 고객':'엑세스 매물',value,title||row.source_table+' #'+row.source_row_number)}
- if(kind==='customers'){
+ if(kind==='properties')for(const row of tables.lm_new_properties||[])add('신규매물',{원본:row},row.original_data?.['매물명']||'신규매물 #'+row.serial_no);if(kind==='customers'){
   const notes=new Map((tables.lm_onenote_edits||[]).map(x=>[String(x.source_page_id),x])),profiles=new Map((tables.lm_onenote_customer_profiles||[]).map(x=>[String(x.source_page_id),x]));
   for(const row of tables.lm_onenote_pages||[])add('원노트',{원문:row,수정자료:notes.get(String(row.source_page_id??row.id)),고객정보:profiles.get(String(row.source_page_id??row.id))},row.title||row.name||'원노트 상담자료');
  }return out;
@@ -2384,7 +2384,7 @@ function lmSetupOfflineUI(){
 /* Every saved revision is append-only in IndexedDB before any network write. */
 const lmSyncSandbox=new URL(location.href).searchParams.get('lm-sync-sandbox');
 const lmSyncEngine=window.LMSyncEngine,LM_SYNC_DB='landmaker-sync-journal-v1'+(lmSyncSandbox?'-sandbox-'+lmSyncSandbox:'');
-let lmSyncActor='',lmSyncTail=null,lmSyncSerial=Promise.resolve(),lmSyncBusy=false,lmSyncSaving=0,lmSyncOnlineMode=false,lmSyncTimer;
+let lmSyncActor='',lmSyncTail=null,lmSyncSerial=Promise.resolve(),lmSyncBusy=false,lmSyncSaving=0,lmSyncTimer,lmSyncNextAttempt=0,lmSyncFailures=0,lmSyncLastArchiveRefresh=0;
 window.lmOfflineEditing=false;
 function lmSyncDB(name=LM_SYNC_DB){return new Promise((resolve,reject)=>{const r=indexedDB.open(name,1);r.onupgradeneeded=()=>{r.result.createObjectStore('operations',{keyPath:'id'});r.result.createObjectStore('metadata')};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 async function lmSyncStore(mode,action,name=LM_SYNC_DB){const d=await lmSyncDB(name);try{return await new Promise((resolve,reject)=>{const tx=d.transaction(['operations','metadata'],mode);let result;const set=x=>result=x;action(tx.objectStore('operations'),tx.objectStore('metadata'),set);tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('PC 저장이 중단됐습니다.'))})}finally{d.close()}}
@@ -2405,7 +2405,7 @@ async function lmSyncMaterialize(){
 }
 async function lmSyncStatus(){
  try{const rows=await lmSyncRows(),pending=rows.filter(x=>x.status==='pending').length,conflict=rows.filter(x=>x.status==='conflict').length;
- const label=(lmSyncSaving?'PC 저장 중 · ':'')+(navigator.onLine&&!lmOfflineTest()?'':'오프라인 · ')+'전송 대기 '+pending+'건 · 충돌 '+conflict+'건';
+ const label=(lmSyncSaving?'PC 저장 중 · ':'')+(navigator.onLine&&!lmOfflineTest()?'':'오프라인 · ')+(!authToken&&pending?'직원 로그인 후 전송 · ':'')+'전송 대기 '+pending+'건 · 충돌 '+conflict+'건';
  let b=document.getElementById('lmSyncStatus');if(!b){b=document.createElement('button');b.type='button';b.id='lmSyncStatus';b.style.cssText='position:fixed;right:18px;bottom:108px;z-index:2147483641;max-width:600px;background:#075e6a;color:white';b.onclick=()=>void lmSyncCenter();document.body.append(b)}b.textContent=label+' · 저장 내역';
  }catch(e){showSaveStatus('동기화 기록 확인 실패: '+e.message,true)}
 }
@@ -2440,18 +2440,33 @@ async function lmSyncCheckpoint(){
  await lmSyncStore('readwrite',s=>{for(const row of rows){const q=s.get(row.id);q.onsuccess=()=>{if(q.result?.status==='applied')s.put({...q.result,checkpointed:true})}}});
 }
 async function lmSyncFlush(){
- if(lmSyncBusy||lmSyncSaving||!navigator.onLine||lmOfflineTest()||window.lmOfflineMode||!authToken)return;
+ if(lmSyncBusy||lmSyncSaving||Date.now()<lmSyncNextAttempt||!navigator.onLine||lmOfflineTest()||window.lmOfflineMode||!authToken)return;
  lmSyncBusy=true;
  try{
-  const run=async()=>{for(const row of await lmSyncRows()){
+  let processed=0;const run=async()=>{for(const row of await lmSyncRows()){
    if(row.status!=='pending')continue;
    if(row.operation.actor_id!==lmSyncActor)continue;
-   const result=await lmSyncRequest(row.operation);await lmSyncMark(row.id,result);
-  }await lmSyncCheckpoint()};
+   const result=await lmSyncRequest(row.operation);await lmSyncMark(row.id,result);processed++;
+  }await lmSyncCheckpoint();await lmSyncPull()};
   if(navigator.locks)await navigator.locks.request('landmaker-journal-sender-v1',run);else await run();
- }catch(e){showSaveStatus('자동 전송 대기 · PC 원본 유지: '+e.message,true)}finally{lmSyncBusy=false;void lmSyncStatus()}
+  lmSyncFailures=0;lmSyncNextAttempt=0;if(processed)showSaveStatus('자동 병합 처리 '+processed+'건 완료 · 충돌 여부는 저장 내역에서 확인하세요.',false);
+ }catch(e){lmSyncNextAttempt=Date.now()+Math.min(120000,15000*2**lmSyncFailures++);showSaveStatus('자동 전송 대기 · PC 원본 유지: '+e.message,true)}finally{lmSyncBusy=false;void lmSyncStatus()}
 }
 const lmArchiveNetwork=archiveAPI;
+async function lmSyncPull(){
+ const latest=await cloudRPC('lm_cloud_read',{});if(!latest?.data||!Number.isFinite(latest.version))throw Error('최신 공동자료 조회 실패');
+ const cached=await lmLocalRead();let archives=cached?.archives;
+ if(!lmSyncSandbox&&archives?.completedAt&&Date.now()-lmSyncLastArchiveRefresh>60000){
+  archives=lmSyncEngine.clone(archives);
+  for(const [table,key]of Object.entries(lmSyncEngine.tableKeys)){let after=null;const all=[];for(;;){const rows=await lmArchiveNetwork(table,{select:'*',order:key+'.asc',limit:'1000',...(after?{[key]:'gt.'+after}:{})});if(!Array.isArray(rows))throw Error('PC 사본 갱신 응답 오류');all.push(...rows);if(rows.length<1000)break;const next=String(rows.at(-1)[key]);if(next===after)throw Error('PC 사본 페이지 반복');after=next}archives.tables[table]=all;}
+  lmSyncLastArchiveRefresh=Date.now();
+ }
+ await window.lmCacheSnapshot(latest.data,latest.version,archives);
+ const pending=(await lmSyncRows()).some(x=>['pending','conflict'].includes(x.status));
+ if(!lmSyncSaving&&!pending&&!lmFormDirty&&!window.lmPropertyDraftDirty&&!document.querySelector('#propertyForm,#customerForm')&&lmSyncEngine.equal(db,lmSyncTail)){
+  db={...empty(),...latest.data};lmSyncTail=lmSyncEngine.clone(db);cloudVersion=latest.version;cloudLastSaved=JSON.stringify(db);lmAuditBaseline=lmAuditSnapshot();
+ }
+}
 async function lmSyncStartEditing(){
  await lmSyncSerial.catch(()=>{});const snapshot=await lmSyncMaterialize();
  lmSyncActor=snapshot.staffId||lmSyncActor;if(!lmSyncActor)throw Error('온라인 직원 로그인으로 이 PC의 작업자를 먼저 확인해 주세요.');
@@ -2470,8 +2485,8 @@ async function lmSyncLocalTableSave(table,before,after){
 }
 async function lmSyncEditArchive(entry){
  const s=await lmSyncMaterialize(),tables=s.archives?.tables||{},value=entry.value;let table,previous,fields,title;
- if(entry.source==='엑세스 매물'){
-  const row=value.원본;table='lm_access_property_edits';previous=(tables[table]||[]).find(x=>String(x.source_id)===String(row.id));
+ if(entry.source==='엑세스 매물'||entry.source==='신규매물'){
+  const row=value.원본;table=entry.source==='신규매물'?'lm_new_properties':'lm_access_property_edits';previous=entry.source==='신규매물'?row:(tables[table]||[]).find(x=>String(x.source_id)===String(row.id));
   const data={...row.original_data,...(previous?.edited_data||{})};fields=Object.entries(data).filter(([k,v])=>!k.startsWith('__')&&(typeof v==='string'||typeof v==='number'||v===null)).map(([key,v])=>({key,label:key,value:v??''}));title='엑세스 매물 수정';
  }else{
   const isNote=entry.source==='원노트',row=isNote?value.원문:value.원본;table=isNote?'lm_onenote_customer_profiles':'lm_access_customer_profiles';const key=lmSyncEngine.tableKeys[table],rid=String(isNote?(row.source_page_id??row.id):row.id);previous=(tables[table]||[]).find(x=>String(x[key])===rid);
@@ -2481,7 +2496,7 @@ async function lmSyncEditArchive(entry){
  panel.innerHTML='<h2>'+esc(title)+'</h2><p>PC에 먼저 저장하고, 온라인 직원 로그인 상태에서 자동 전송합니다. 충돌하면 양쪽 내용을 보관합니다.</p><form><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px">'+fields.map((f,i)=>'<label>'+esc(f.label)+'<textarea data-field="'+i+'">'+esc(f.value)+'</textarea></label>').join('')+'</div>'+(entry.source==='엑세스 고객'?'<label>새 상담내용<textarea data-consult></textarea></label>':'')+'<div class="row"><button type="submit">이 PC에 저장</button><button type="button" data-cancel>닫기</button></div><p data-state role="status"></p></form>';
  document.body.appendChild(panel);panel.querySelector('[data-cancel]').onclick=()=>panel.remove();
  panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const b=panel.querySelector('[type=submit]');b.disabled=true;try{
-  let after;if(table==='lm_access_property_edits'){const r=value.원본;after={...(previous||{}),source_id:r.id,source_table:r.source_table,source_row_number:r.source_row_number,edited_data:{...r.original_data,...(previous?.edited_data||{})}};for(let i=0;i<fields.length;i++)after.edited_data[fields[i].key]=panel.querySelector('[data-field="'+i+'"]').value}
+  let after;if(table==='lm_access_property_edits'||table==='lm_new_properties'){const r=value.원본,key=table==='lm_new_properties'?'original_data':'edited_data';after=table==='lm_new_properties'?{...previous,original_data:{...r.original_data}}:{...(previous||{}),source_id:r.id,source_table:r.source_table,source_row_number:r.source_row_number,edited_data:{...r.original_data,...(previous?.edited_data||{})}};for(let i=0;i<fields.length;i++)after[key][fields[i].key]=panel.querySelector('[data-field="'+i+'"]').value}
   else{const r=entry.source==='원노트'?value.원문:value.원본,key=lmSyncEngine.tableKeys[table];after={...(previous||{}),[key]:String(entry.source==='원노트'?(r.source_page_id??r.id):r.id)};for(let i=0;i<fields.length;i++)after[fields[i].key]=panel.querySelector('[data-field="'+i+'"]').value}
   await lmSyncLocalTableSave(table,previous,after);previous=after;
   const consult=panel.querySelector('[data-consult]');if(consult?.value.trim()){const r={id:crypto.randomUUID(),import_row_id:value.원본.id,consulted_on:today(),staff_name:lmLoggedInStaff,content:consult.value.trim()};await lmSyncLocalTableSave('lm_access_customer_consultations',null,r);consult.value=''}
@@ -2524,7 +2539,7 @@ function lmSyncReviewConflict(row,article){
   await lmSyncStore('readwrite',s=>s.put({...row,status:'superseded',resolution:'reviewed-replacement'}));article.remove();void lmSyncFlush();
  }catch(e){alert(e.message);save.disabled=false}};box.append(save);article.append(box);
 }
-window.addEventListener('online',()=>{void lmSyncFlush();void lmSyncStatus()});
+window.addEventListener('online',()=>{lmSyncNextAttempt=0;lmSyncLastArchiveRefresh=0;void lmSyncFlush();void lmSyncStatus()});
 window.addEventListener('beforeunload',e=>{if(lmSyncSaving){e.preventDefault();e.returnValue='PC 저장을 완료하는 중입니다.'}});
 lmSyncTimer=setInterval(()=>{void lmSyncFlush()},15000);
 void lmSyncStatus();
