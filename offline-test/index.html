@@ -563,15 +563,50 @@ body.lm-list-popup-open #lmRecordPopup{z-index:100002}
 #propertyForm .lm-screenshot-ocr img{max-width:100%!important;height:auto}
 @media(max-width:850px){#propertyForm .lm-screenshot-ocr .grid{grid-template-columns:1fr!important}}
 </style></head><body><header><button type="button" id="lmMobileMenu" aria-label="메뉴 열기" aria-expanded="false">☰</button><div><strong style="font-size:22px">랜드메이커</strong> <small>v14.5</small></div><span>고객 · 매물 · 일정 통합관리</span></header><div id="authInfo" class="auth-badge" hidden><button type="button" id="lmManualSync" onclick="lmManualSync()" title="서버 최신 자료 수동 불러오기">↻ 동기화</button><span id="authStaffName"></span><button type="button" id="authLogout" aria-label="현재 계정 로그아웃">로그아웃</button></div><div id="lmMobileBackdrop" aria-hidden="true"></div><aside id="nav"></aside><main><div id="view"></div></main><div id="detail" class="side hidden"></div><div id="lmSessionLoading" role="status" aria-live="polite"><div class="lm-session-loading-card"><div class="lm-session-spinner" aria-hidden="true"></div><strong>랜드메이커</strong><p>로그인 상태 확인 중...</p></div></div><div id="authGate"><div class="auth-box"><h1>랜드메이커</h1><p>직원 계정으로 로그인하세요.<br>아이디 저장은 이메일만 기억합니다. 자동로그인을 끄더라도 같은 탭에서 새로고침하면 로그인 상태가 유지됩니다.</p><form id="authForm" novalidate><label>직원 이메일<input type="email" id="authEmail" autocomplete="username" required></label><label>비밀번호<input type="password" id="authPassword" autocomplete="current-password" required></label><button type="button" id="authSubmit" onclick="window.landmakerLoginClick && window.landmakerLoginClick()">로그인</button><div class="login-preferences"><label style="display:flex;align-items:center;gap:9px;font-size:14px"><input type="checkbox" id="rememberEmail" style="width:auto;margin:0"> 아이디 저장</label><label style="display:flex;align-items:center;gap:9px;font-size:14px"><input type="checkbox" id="autoLogin" style="width:auto;margin:0"> 자동로그인 (개인 PC에서만)</label></div><p id="authProgress" aria-live="polite" style="color:#375d67;font-size:13px;min-height:20px">버튼을 누르면 연결 상태가 표시됩니다.</p><p class="auth-error" id="authError" role="alert"></p></form></div></div><script>
-'use strict';const CUSTOMER_CATEGORIES=['매수','매도','임대','임차','부동산','소유주','이실장관리♥','김소장관리♣','윤부장 매수■','윤부장 임차■','완료고객','완료'];const STAFF=['이보배','윤혜성','김하영','백지인'],KEY='landmaker-v06';const empty=()=>({customers:[],properties:[],records:[],schedules:[],transactions:[],ownership:[],quick:[],auditLog:[],propertyGroups:[],customerCompletionOverrides:{}});let db=empty();const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),id=()=>((typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2)),today=()=>new Date().toLocaleDateString('en-CA'),save=()=>{if(!authToken||!cloudReady){showSaveStatus('로그인 또는 공동저장 연결이 필요합니다.',true);return false}lmRecordAudit();lmFormDirty=false;render();queueCloudSave();return true},get=(type,k)=>db[type].find(x=>x.id===k),staffOptions=(v='')=>STAFF.map(s=>`<option ${s===v?'selected':''}>${s}</option>`).join(''),opts=(type,selected='')=>'<option value="">선택 안 함</option>'+db[type].map(x=>`<option value="${esc(x.id)}" ${x.id===selected?'selected':''}>${esc(x.name||x.title)}</option>`).join(''),formObj=f=>Object.fromEntries(new FormData(f)),matches=(x,q)=>JSON.stringify(x).toLowerCase().includes(q.toLowerCase()),formatLot=p=>[p.dong,p.san?'산':'',p.main,p.sub?'-'+p.sub:''].filter(Boolean).join(' ').replace(' -','-'),close=()=>{$('#detail').classList.add('hidden');document.body.classList.remove('lm-sheet-detail-open','lm-customer-modal-open')};function showSaveStatus(msg,error){let el=document.getElementById('saveStatus');if(!el){el=document.createElement('div');el.id='saveStatus';el.style.cssText='position:fixed;bottom:18px;right:18px;max-width:460px;padding:14px 18px;border-radius:10px;z-index:99;box-shadow:0 3px 14px #0003;font-weight:bold';document.body.appendChild(el)}el.style.background=error?'#fff0ed':'#e6f7eb';el.style.color=error?'#9c2626':'#1b6538';el.textContent=msg;}let tab='home',month=today().slice(0,7),day=today(),editing=null,files=[];
+(function(root){
+ 'use strict';
+ const groups=['customers','properties','records','schedules','transactions','ownership','quick','auditLog','propertyGroups'];
+ const clone=x=>x===undefined?undefined:JSON.parse(JSON.stringify(x));
+ const stable=x=>JSON.stringify(x===undefined?null:x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
+ const equal=(a,b)=>stable(a)===stable(b);
+ function diff(before,after){
+  const changes=[];
+  for(const group of groups){
+   const map=arr=>{const m=new Map();for(const row of arr||[]){if(!row||row.id==null||m.has(String(row.id)))throw Error('중복 또는 없는 자료번호: '+group);m.set(String(row.id),row)}return m};
+   const b=map(before[group]),a=map(after[group]);
+   for(const rid of new Set([...b.keys(),...a.keys()]))if(!equal(b.get(rid),a.get(rid))){if(group==='auditLog'&&!a.has(rid))continue;changes.push({target:'core',collection:group,record_id:rid,before:clone(b.get(rid)??null),after:clone(a.get(rid)??null)})}
+  }
+  const maps=['customerCompletionOverrides','customerCategoryOverrides'];
+  for(const group of maps){const b=before[group]||{},a=after[group]||{};for(const rid of new Set([...Object.keys(b),...Object.keys(a)]))if(!equal(b[rid],a[rid]))changes.push({target:'map',collection:group,record_id:rid,before:clone(b[rid]??null),after:clone(a[rid]??null)})}
+  for(const k of new Set([...Object.keys(before),...Object.keys(after)]))if(!groups.includes(k)&&!maps.includes(k)&&!equal(before[k],after[k]))throw Error('이 항목은 오프라인 저장을 지원하지 않습니다: '+k);
+  return changes;
+ }
+ function apply(state,op){
+  if(op.target==='core'){state[op.collection]=(state[op.collection]||[]).filter(x=>String(x.id)!==op.record_id);if(op.after!==null)state[op.collection].push(clone(op.after))}
+  else if(op.target==='map'){state[op.collection]??={};if(op.after===null)delete state[op.collection][op.record_id];else state[op.collection][op.record_id]=clone(op.after)}
+  else if(op.target==='table'){state.archives??={tables:{}};state.archives.tables??={};const key=tableKeys[op.collection];if(!key)throw Error('지원하지 않는 자료');state.archives.tables[op.collection]=(state.archives.tables[op.collection]||[]).filter(x=>String(x[key])!==op.record_id);if(op.after!==null)state.archives.tables[op.collection].push(clone(op.after))}
+  return state;
+ }
+ const tableKeys={lm_access_customer_profiles:'import_row_id',lm_access_property_edits:'source_id',lm_onenote_customer_profiles:'source_page_id',lm_onenote_edits:'source_page_id',lm_access_customer_consultations:'id',lm_new_properties:'id'};
+ function merge(b,l,r,path=''){
+  if(equal(l,b))return {value:clone(r),conflicts:[]};if(equal(r,b)||equal(l,r))return {value:clone(l),conflicts:[]};
+  const obj=x=>x&&typeof x==='object'&&!Array.isArray(x);
+  if(obj(b)&&obj(l)&&obj(r)){const value={},conflicts=[];for(const k of new Set([...Object.keys(b),...Object.keys(l),...Object.keys(r)])){if(['updatedAt','updatedBy','updated_at','updated_by'].includes(k)){value[k]=clone(l[k]??r[k]);continue}const m=merge(b[k],l[k],r[k],path+'/'+k);if(m.value!==undefined)value[k]=m.value;conflicts.push(...m.conflicts)}return {value,conflicts}}
+  return {value:clone(r),conflicts:[path]};
+ }
+ const api={groups,clone,equal,diff,apply,merge,tableKeys};
+ if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.LMSyncEngine=api;
+})(typeof window!=='undefined'?window:this);
+
+'use strict';const CUSTOMER_CATEGORIES=['매수','매도','임대','임차','부동산','소유주','이실장관리♥','김소장관리♣','윤부장 매수■','윤부장 임차■','완료고객','완료'];const STAFF=['이보배','윤혜성','김하영','백지인'],KEY='landmaker-v06';const empty=()=>({customers:[],properties:[],records:[],schedules:[],transactions:[],ownership:[],quick:[],auditLog:[],propertyGroups:[],customerCompletionOverrides:{}});let db=empty();const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),id=()=>((typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2)),today=()=>new Date().toLocaleDateString('en-CA'),save=()=>{if((!authToken||!cloudReady)&&!window.lmOfflineEditing){showSaveStatus('로그인 또는 공동저장 연결이 필요합니다.',true);return false}lmRecordAudit();lmFormDirty=false;render();queueCloudSave();return true},get=(type,k)=>db[type].find(x=>x.id===k),staffOptions=(v='')=>STAFF.map(s=>`<option ${s===v?'selected':''}>${s}</option>`).join(''),opts=(type,selected='')=>'<option value="">선택 안 함</option>'+db[type].map(x=>`<option value="${esc(x.id)}" ${x.id===selected?'selected':''}>${esc(x.name||x.title)}</option>`).join(''),formObj=f=>Object.fromEntries(new FormData(f)),matches=(x,q)=>JSON.stringify(x).toLowerCase().includes(q.toLowerCase()),formatLot=p=>[p.dong,p.san?'산':'',p.main,p.sub?'-'+p.sub:''].filter(Boolean).join(' ').replace(' -','-'),close=()=>{$('#detail').classList.add('hidden');document.body.classList.remove('lm-sheet-detail-open','lm-customer-modal-open')};function showSaveStatus(msg,error){let el=document.getElementById('saveStatus');if(!el){el=document.createElement('div');el.id='saveStatus';el.style.cssText='position:fixed;bottom:18px;right:18px;max-width:460px;padding:14px 18px;border-radius:10px;z-index:99;box-shadow:0 3px 14px #0003;font-weight:bold';document.body.appendChild(el)}el.style.background=error?'#fff0ed':'#e6f7eb';el.style.color=error?'#9c2626':'#1b6538';el.textContent=msg;}let tab='home',month=today().slice(0,7),day=today(),editing=null,files=[];
 const menus=[['home','대시보드'],['calendar','일정관리 · 달력'],['customerList','고객목록 · 엑셀형'],['propertyList','매물목록 · 엑셀형'],['sales','매매진행중'],['leases','임대진행중'],['matching','물건 ↔ 고객 매칭'],['customers','고객등록'],['properties','매물등록'],['quickCustomer','빠른입력 - 고객등록'],['quickProperty','빠른입력 - 매물등록'],['adManager','블로그 광고관리'],['backup','백업']];function nav(){ $('#nav').innerHTML=menus.map(([k,v])=>`<button class="${tab===k?'active':''}" data-nav="${k}">${v}</button>`).join('');$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(lmFormDirty&&!confirm('고객정보를 아직 저장하지 않았습니다. 입력 내용을 버리고 이동할까요?'))return;lmFormDirty=false;tab=b.dataset.nav;editing=null;if(tab==='properties')window.lmShowPropertyForm=true;if(tab==='quickCustomer'||tab==='quickProperty')editing={quickMode:tab==='quickProperty'?'property':'customer'};close();render()})}function render(){
  // v14: 작성 중 고객 입력폼을 자동 화면 재생성으로부터 보호
  if(lmFormDirty && document.querySelector('#customerForm') && (tab==='customers'||tab==='quick'||tab==='quickCustomer')){return;}
  if(window.lmPropertyDraftDirty && document.querySelector('#propertyForm')){return;}
  nav();
  // v12.6: 진행중 메뉴는 매물 건수와 관계없이 Access 통합 엑셀 목록으로 연결합니다.
- if(tab==='sales'||tab==='leases'){try{propertyListView(tab==='sales'?'sale':'lease')}catch(e){console.error(e);$('#view').innerHTML='<div class="panel"><h2>진행중 매물 조회 오류</h2><p>'+esc(e.message||e)+'</p></div>'}return;}
- if(tab==='adManager'){lmAdManagerView();return;}
+ if(!window.lmOfflineEditing&&(tab==='sales'||tab==='leases')){try{propertyListView(tab==='sales'?'sale':'lease')}catch(e){console.error(e);$('#view').innerHTML='<div class="panel"><h2>진행중 매물 조회 오류</h2><p>'+esc(e.message||e)+'</p></div>'}return;}
+ if(window.lmOfflineEditing&&['propertyList','customerList','sales','leases'].includes(tab)){void lmOpenOfflineView();return;}if(tab==='adManager'){lmAdManagerView();return;}
  if(tab==='groups'){lmGroupView();return;}
  if(tab==='archiveCustomers'){archiveCustomersView();return;}
  const huge=db.properties.length>10000;
@@ -2105,7 +2140,7 @@ async function cloudRPC(fn,body){if(fn==='lm_cloud_write'){const previous=lmWrit
 async function lmCloudWriteProtected(body){const fn='lm_cloud_write';if(fn==='lm_cloud_write'){try{await lmSafePut(body.p_data,'서버 저장 전 보관')}catch(e){throw Error('PC 복구용 임시저장에 실패하여 서버 저장을 중단했습니다: '+e.message)}}await ensureFreshAuth();const r=await fetchWithTimeout(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json'},body:JSON.stringify(body)},18000);let j;try{j=await r.json()}catch{j=null}if(!r.ok)throw Error('공동 저장 서버 오류 ('+r.status+'): '+JSON.stringify(j));if(fn==='lm_cloud_write'&&j?.ok===true){await window.lmCacheSnapshot(body.p_data,j.version).catch(e=>lmLocalStatus('PC 사본 갱신 실패: '+e.message));try{await lmSafeClearIfSame(JSON.stringify(body.p_data))}catch(e){console.warn('복구 스냅샷 정리 실패',e)}}return j}
 async function lmCloudReadOnly(fn,body){await ensureFreshAuth();const r=await fetchWithTimeout(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json'},body:JSON.stringify(body)},18000);let j;try{j=await r.json()}catch{j=null}if(!r.ok)throw Error('공동 서버 오류 ('+r.status+'): '+JSON.stringify(j));return j}
 function lmActiveUnsavedForm(){return !!(document.querySelector('#customerForm') && (tab==='customers'||tab==='quick'||tab==='quickCustomer')) || !!(tab==='quick' && document.querySelector('#source') && document.querySelector('#source').value.trim())}
-async function loadCloud(){const pending=await lmSafeGet();if(pending){await lmSafeNotify();throw Error('PC에 미전송 자료가 있습니다. 복구 파일을 다운로드하고 충돌을 해결하기 전에는 서버 자료로 화면을 덮어쓰지 않습니다.')}const j=await cloudRPC('lm_cloud_read',{});if(!j||typeof j.version!=='number'||!j.data)throw Error('공동 데이터 읽기 응답이 올바르지 않습니다.');db={...empty(),...j.data};cloudVersion=j.version;cloudLastSaved=JSON.stringify(db);lmAuditBaseline=lmAuditSnapshot();cloudReady=true;showSaveStatus('공동 데이터 불러오기 완료 · 버전 '+cloudVersion,false);await window.lmCacheSnapshot(db,cloudVersion).catch(e=>lmLocalStatus('PC 자동저장 실패: '+e.message));void window.lmEnsureOfflineArchives();if(cloudPoll){clearInterval(cloudPoll);cloudPoll=null;} /* v14.2: 자동 서버 읽기/화면 재생성 제거 */}
+async function loadCloud(){const pending=await lmSafeGet();if(pending){await lmSafeNotify();throw Error('PC에 미전송 자료가 있습니다. 복구 파일을 다운로드하고 충돌을 해결하기 전에는 서버 자료로 화면을 덮어쓰지 않습니다.')}const j=await cloudRPC('lm_cloud_read',{});if(!j||typeof j.version!=='number'||!j.data)throw Error('공동 데이터 읽기 응답이 올바르지 않습니다.');db={...empty(),...j.data};cloudVersion=j.version;cloudLastSaved=JSON.stringify(db);lmAuditBaseline=lmAuditSnapshot();cloudReady=true;showSaveStatus('공동 데이터 불러오기 완료 · 버전 '+cloudVersion,false);await window.lmCacheSnapshot(db,cloudVersion).catch(e=>lmLocalStatus('PC 자동저장 실패: '+e.message));const localView=await lmSyncMaterialize();for(const row of await lmSyncRows())if(!row.checkpointed&&['pending','conflict'].includes(row.status)&&row.operation.target!=='table')lmSyncEngine.apply(db,row.operation);lmSyncTail=lmSyncEngine.clone(db);lmAuditBaseline=lmAuditSnapshot();void lmSyncFlush();void window.lmEnsureOfflineArchives();if(cloudPoll){clearInterval(cloudPoll);cloudPoll=null;} /* v14.2: 자동 서버 읽기/화면 재생성 제거 */}
 async function lmManualSync(){const recovery=await lmSafeGet().catch(()=>({}));if(recovery){alert('PC에 미확인 저장 자료가 있습니다. 먼저 화면 아래의 복구 파일을 다운로드해 보관해 주세요. 데이터 손실 방지를 위해 수동 동기화를 차단합니다.');await lmSafeNotify();return;}const btn=document.getElementById('lmManualSync');if(!authToken||!cloudReady){alert('로그인 후 동기화할 수 있습니다.');return;}if(cloudBusy||cloudPending){alert('서버 저장 중입니다. 완료된 뒤 다시 눌러 주세요.');return;}const localChanges=JSON.stringify(db)!==cloudLastSaved;const hasDraft=lmFormDirty||lmActiveUnsavedForm()||!!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus');if(localChanges||hasDraft){alert('저장되지 않은 변경사항 또는 작성 중인 입력란이 있습니다. 자료 보호를 위해 동기화를 중단했습니다. 저장을 완료한 후 다시 시도해 주세요.');return;}if(!confirm('서버의 최신 공동자료를 불러오고 현재 화면을 갱신할까요?'))return;if(btn){btn.disabled=true;btn.textContent='동기화 중…';}try{await loadCloud();lmFormDirty=false;editing=null;close();render();showSaveStatus('수동 동기화 완료 · 서버 버전 '+cloudVersion,false);}catch(e){alert('동기화 실패: '+e.message);}finally{if(btn){btn.disabled=false;btn.textContent='↻ 동기화';}}}
 
 
@@ -2163,8 +2198,8 @@ async function lmAttemptSafeMerge(baseText,localText){
  return true;
 }
 
-function queueCloudSave(){cloudPending=true;void lmSafePut(db,'서버 저장 대기').then(()=>{if(!cloudBusy)void flushCloudSave()}).catch(e=>{cloudPending=false;showSaveStatus('PC 임시보관 실패: '+e.message+' · 입력 내용을 별도 백업하세요.',true);alert('PC 임시보관에 실패했습니다. 자료를 별도 백업해 주세요. 서버 저장은 중단합니다.')})}
-async function flushCloudSave(){cloudBusy=true;while(cloudPending&&authToken&&cloudReady){cloudPending=false;const payload=JSON.stringify(db);if(payload===cloudLastSaved)continue;showSaveStatus('공동 서버에 저장 중...',false);try{const result=await cloudRPC('lm_cloud_write',{p_expected_version:cloudVersion,p_data:JSON.parse(payload)});if(!result||result.ok!==true){cloudPending=false;try{await lmAttemptSafeMerge(cloudLastSaved,payload)}catch(mergeError){showSaveStatus('충돌 보호: '+mergeError.message,true);alert('동시 저장 충돌: '+mergeError.message+'\n서버의 기존 자료를 덮어쓰지 않았습니다.');}break}cloudVersion=result.version;cloudLastSaved=payload;showSaveStatus('공동 서버 저장 완료 · 버전 '+cloudVersion,false)}catch(e){cloudPending=false;showSaveStatus('서버 저장 실패: '+e.message+' · 새로고침 전에 내용을 확인하세요.',true);console.error(e);break}}cloudBusy=false}
+function queueCloudSave(){return lmQueueDurableSave()}
+async function flushCloudSave(){return lmSyncFlush()}
 window.addEventListener('beforeunload',e=>{if(cloudBusy||cloudPending||(cloudReady&&JSON.stringify(db)!==cloudLastSaved)){e.preventDefault();e.returnValue='저장되지 않은 변경사항이 있습니다.'}});
 
 /* v13.0 공동데이터 변경이력: 로그인 직원 기준, 저장 시점의 변경 필드만 기록 */
@@ -2266,7 +2301,7 @@ async function protectedDelete(kind,key){const isCustomer=kind==='customer',list
 function lmFinishSessionLoading(){const el=document.getElementById('lmSessionLoading');if(el)el.hidden=true}
 async function checkStaff(token){const headers={'apikey':SB_KEY,'Authorization':'Bearer '+token};const u=await fetchWithTimeout(SB_URL+'/auth/v1/user',{headers});if(!u.ok)throw Error('로그인 사용자 확인 실패 ('+u.status+')');const user=await u.json();if(!user?.id)throw Error('로그인 사용자 ID를 확인할 수 없습니다.');const r=await fetchWithTimeout(SB_URL+'/rest/v1/lm_staff?select=name,auth_user_id&auth_user_id=eq.'+encodeURIComponent(user.id)+'&limit=1',{headers});if(!r.ok)throw Error('직원 권한 확인 실패 ('+r.status+')');const a=await r.json();if(!Array.isArray(a)||a.length!==1||a[0].auth_user_id!==user.id)throw Error('현재 로그인 계정은 랜드메이커 직원으로 등록되어 있지 않습니다.');return a[0]}
 function openAuth(){authToken=null;cloudReady=false;document.getElementById('authGate').hidden=false;document.getElementById('authInfo').hidden=true;document.getElementById('view').innerHTML='';document.getElementById('nav').innerHTML=''}
-async function activateAuth(token){const staff=await checkStaff(token);authToken=token;lmLoggedInStaff=staff.name;document.getElementById('authStaffName').textContent=staff.name+' 님';await loadCloud();await lmSafeNotify();document.getElementById('authGate').hidden=true;document.getElementById('authInfo').hidden=false;render()}
+async function activateAuth(token){const staff=await checkStaff(token);authToken=token;lmSyncActor=staff.auth_user_id;lmLoggedInStaff=staff.name;document.getElementById('authStaffName').textContent=staff.name+' 님';await loadCloud();await lmSafeNotify();document.getElementById('authGate').hidden=true;document.getElementById('authInfo').hidden=false;render()}
 async function fetchWithTimeout(url,options={},ms=12000){if(window.lmOfflineMode)throw Error('PC 저장자료 조회 중에는 인터넷 프로그램을 사용하지 않습니다.');const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),ms);try{return await fetch(url,{...options,signal:ctrl.signal})}finally{clearTimeout(t)}}
 function authMessage(ex){if(ex?.name==='AbortError')return '서버 응답이 12초 동안 없습니다. 인터넷 연결 또는 브라우저 보안 설정을 확인하세요.';if(ex instanceof TypeError)return 'Supabase 서버 요청이 차단되거나 네트워크 연결에 실패했습니다. 브라우저 개발자도구(F12)의 Console/Network 오류를 확인해 주세요. (CORS, 확장 프로그램 또는 네트워크 차단 가능)';return ex?.message||'로그인 오류가 발생했습니다.'}
 window.landmakerLoginClick=async()=>{const btn=document.getElementById('authSubmit'),err=document.getElementById('authError'),progress=document.getElementById('authProgress');if(btn.disabled)return;btn.disabled=true;btn.textContent='연결 중...';err.textContent='';progress.textContent='① Supabase 로그인 서버에 연결 중...';try{const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;try{if(document.getElementById('rememberEmail').checked)localStorage.setItem('landmaker-remember-email',email);else localStorage.removeItem('landmaker-remember-email')}catch(_){}if(!email){throw Error('직원 이메일을 먼저 입력해 주세요.')}if(!password){throw Error('비밀번호를 먼저 입력해 주세요.')}const r=await fetchWithTimeout(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});const j=await r.json();if(!r.ok||!j.access_token)throw Error(j.msg||j.error_description||j.message||'이메일·비밀번호 또는 이메일 인증 상태를 확인하세요. (HTTP '+r.status+')');progress.textContent='② 로그인 성공, 직원 권한 확인 중...';await activateAuth(j.access_token);setAuthSession(j);document.getElementById('authPassword').value='';progress.textContent='로그인 성공'}catch(ex){console.error('로그인 실패',ex);err.textContent=authMessage(ex);progress.textContent='로그인 실패 · 아래 오류 내용을 확인하세요.';openAuth()}finally{btn.disabled=false;btn.textContent='로그인'}};
@@ -2289,12 +2324,12 @@ const lmLocalRead=()=>lmLocalTransaction('readonly',s=>s.get('latest'));
 function lmLocalStatus(text){for(const id of ['lmLocalReady','lm-cache-status']){const e=document.getElementById(id);if(e)e.textContent=text}}
 window.lmCacheSnapshot=function(data,version,archives){
  if(!data||!['properties','customers','schedules','records','transactions','ownership'].every(k=>Array.isArray(data[k]))||!Number.isFinite(Number(version)))return Promise.reject(Error('자료 형식이 올바르지 않아 이전 PC 사본을 유지합니다.'));
- const next={data:structuredClone(data),version:Number(version),at:new Date().toISOString(),staff:typeof lmLoggedInStaff==='string'?lmLoggedInStaff:''};
+ const next={data:structuredClone(data),version:Number(version),at:new Date().toISOString(),staff:typeof lmLoggedInStaff==='string'?lmLoggedInStaff:'',staffId:lmSyncActor||''};
  if(archives)next.archives=structuredClone(archives);
  const task=lmLocalQueue.catch(()=>{}).then(async()=>{
   const previous=await lmLocalRead();
   if((previous?.data?.properties?.length||previous?.data?.customers?.length)&&!next.data.properties.length&&!next.data.customers.length)throw Error('빈 자료로 이전 PC 사본을 교체하지 않았습니다.');
-  if(previous&&Number(previous.version)>next.version){next.data=previous.data;next.version=previous.version;next.at=previous.at;next.staff=previous.staff}
+  if(previous&&Number(previous.version)>next.version){next.data=previous.data;next.version=previous.version;next.at=previous.at;next.staff=previous.staff;next.staffId=previous.staffId}
   if(!next.archives&&previous?.archives)next.archives=previous.archives;
   await lmLocalTransaction('readwrite',s=>{const r=s.get('latest');r.onsuccess=()=>{if(r.result)s.put(r.result,'previous');s.put(next,'latest')}});
   lmLocalStatus('PC 사본 준비됨 · 매물 '+next.data.properties.length+' · 고객 '+next.data.customers.length+(next.archives?' · 엑세스·원노트 포함':' · 엑세스·원노트 준비 중'));return next;
@@ -2322,18 +2357,18 @@ function lmLocalEntries(snapshot,kind){
  }return out;
 }
 async function lmOpenOfflineView(){
- await lmLocalQueue.catch(()=>{});let snapshot;try{snapshot=await lmLocalRead()}catch(e){alert('PC 자료를 읽지 못했습니다: '+e.message);return false}
+ await lmLocalQueue.catch(()=>{});let snapshot;try{snapshot=await lmSyncMaterialize();lmSyncActor=snapshot.staffId||lmSyncActor;lmLoggedInStaff=snapshot.staff||lmLoggedInStaff}catch(e){alert('PC 자료를 읽지 못했습니다: '+e.message);return false}
  if(!snapshot?.data){const message='이 PC에 저장된 사본이 없습니다. 인터넷 연결 후 직원 로그인으로 자료를 한 번 받아 주세요.';const e=document.getElementById('authProgress');if(e)e.textContent=message;lmLocalStatus(message);return false}
  if(cloudBusy||cloudPending){alert('공동자료 저장 중입니다. 저장 완료 후 PC 자료를 조회해 주세요.');return false}
- window.lmOfflineMode=true;document.getElementById('lmLocalViewer')?.remove();
+ window.lmOfflineMode=false;document.getElementById('lmLocalViewer')?.remove();
  const box=document.createElement('div');box.id='lmLocalViewer';box.setAttribute('role','dialog');box.setAttribute('aria-label','오프라인 매물·고객 조회');box.style.cssText='position:fixed;inset:0;z-index:2147483640;background:#f2f7f7;padding:18px;overflow:auto;color:#16373b;font:15px/1.6 system-ui,sans-serif';
- box.innerHTML='<section style="max-width:1250px;margin:auto"><h2>PC 저장자료 조회 · 읽기 전용</h2><p data-local-meta></p><p>인터넷 조회·수정·저장은 사용하지 않습니다. 마지막으로 이 PC에 저장된 자료를 조회합니다.</p><div style="display:flex;flex-wrap:wrap;gap:9px"><button type="button" data-local-kind="properties">매물조회</button><button type="button" data-local-kind="customers">고객조회</button><button type="button" data-local-return>온라인 화면으로 돌아가기</button></div><label style="display:block;margin:12px 0">이 PC 자료 검색<input data-local-search aria-label="오프라인 자료 검색" placeholder="주소 · 이름 · 연락처 · 상담내용" style="width:min(600px,100%);box-sizing:border-box"></label><p data-local-count role="status"></p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px"><div data-local-list></div><section style="min-width:0;background:white;border:1px solid #cbdcdd;padding:14px;border-radius:9px"><h3 data-local-title>자료를 선택하세요</h3><pre data-local-detail style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:65vh;overflow:auto;font:14px/1.7 system-ui,sans-serif"></pre></section></div><div style="display:flex;gap:10px;margin:12px 0"><button type="button" data-local-prev>이전</button><button type="button" data-local-next>다음</button></div></section>';
+ box.innerHTML='<section style="max-width:1250px;margin:auto"><h2>PC 저장자료 · 입력·자동 병합</h2><p data-local-meta></p><p>매물·고객을 입력하면 PC에 먼저 보관합니다. 온라인 직원 로그인 후 자동 전송하며, 충돌한 내용은 양쪽을 보관합니다.</p><div style="display:flex;flex-wrap:wrap;gap:9px"><button type="button" data-local-new="properties">새 매물 입력</button><button type="button" data-local-new="customers">새 고객 입력</button><button type="button" data-local-sync>동기화 저장 내역</button><button type="button" data-local-kind="properties">매물조회</button><button type="button" data-local-kind="customers">고객조회</button><button type="button" data-local-return>온라인 화면으로 돌아가기</button></div><label style="display:block;margin:12px 0">이 PC 자료 검색<input data-local-search aria-label="오프라인 자료 검색" placeholder="주소 · 이름 · 연락처 · 상담내용" style="width:min(600px,100%);box-sizing:border-box"></label><p data-local-count role="status"></p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px"><div data-local-list></div><section style="min-width:0;background:white;border:1px solid #cbdcdd;padding:14px;border-radius:9px"><h3 data-local-title>자료를 선택하세요</h3><button type="button" data-local-edit disabled>선택자료 수정</button><pre data-local-detail style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:65vh;overflow:auto;font:14px/1.7 system-ui,sans-serif"></pre></section></div><div style="display:flex;gap:10px;margin:12px 0"><button type="button" data-local-prev>이전</button><button type="button" data-local-next>다음</button></div></section>';
  document.body.appendChild(box);box.querySelector('[data-local-meta]').textContent='저장 시각 '+new Date(snapshot.at).toLocaleString('ko-KR')+' · 서버 버전 '+snapshot.version+' · 매물 '+snapshot.data.properties.length+' · 고객 '+snapshot.data.customers.length+(snapshot.archives?' · 엑세스 '+(snapshot.archives.tables?.lm_import_rows?.length||0).toLocaleString()+'건 · 원노트 '+(snapshot.archives.tables?.lm_onenote_pages?.length||0).toLocaleString()+'건 포함 (사본 갱신 시점 기준)':' · 엑세스·원노트는 아직 이 PC에 준비되지 않았습니다.');
- let kind='properties',entries=lmLocalEntries(snapshot,kind),page=0,timer;
- function draw(){const q=box.querySelector('[data-local-search]').value.trim().toLowerCase(),matches=entries.filter(x=>!q||q.split(/\s+/).every(term=>x.search.includes(term)||x.search.replace(/[\s-]/g,'').includes(term.replace(/[\s-]/g,'')))),pages=Math.max(1,Math.ceil(matches.length/50));page=Math.min(Math.max(0,page),pages-1);box.querySelector('[data-local-count]').textContent=(kind==='properties'?'매물':'고객')+' '+matches.length.toLocaleString()+'건 · '+(page+1)+' / '+pages+'페이지';const list=box.querySelector('[data-local-list]');list.replaceChildren();for(const entry of matches.slice(page*50,(page+1)*50)){const b=document.createElement('button');b.type='button';b.style.cssText='display:block;width:100%;text-align:left;margin:0 0 7px;padding:10px;background:white;color:#164d52;border:1px solid #bcd3d4;border-radius:7px';b.textContent=entry.title+' · '+entry.source;b.onclick=()=>{box.querySelector('[data-local-title]').textContent=entry.title+' · '+entry.source;box.querySelector('[data-local-detail]').textContent=lmLocalDescribe(entry.value)};list.appendChild(b)}box.querySelector('[data-local-prev]').disabled=page===0;box.querySelector('[data-local-next]').disabled=page>=pages-1}
- box.querySelectorAll('[data-local-kind]').forEach(b=>b.onclick=()=>{kind=b.dataset.localKind;entries=lmLocalEntries(snapshot,kind);page=0;box.querySelector('[data-local-title]').textContent='자료를 선택하세요';box.querySelector('[data-local-detail]').textContent='';draw()});
+ let kind='properties',entries=lmLocalEntries(snapshot,kind),page=0,timer,selectedEntry=null;box.querySelectorAll('[data-local-new]').forEach(b=>b.onclick=()=>void lmSyncOpenNative(b.dataset.localNew));box.querySelector('[data-local-sync]').onclick=()=>void lmSyncCenter();box.querySelector('[data-local-edit]').onclick=()=>{if(!selectedEntry)return;if(selectedEntry.source==='등록 매물'||selectedEntry.source==='등록 고객')void lmSyncOpenNative(kind,selectedEntry.value);else void lmSyncEditArchive(selectedEntry)};
+ function draw(){const q=box.querySelector('[data-local-search]').value.trim().toLowerCase(),matches=entries.filter(x=>!q||q.split(/\s+/).every(term=>x.search.includes(term)||x.search.replace(/[\s-]/g,'').includes(term.replace(/[\s-]/g,'')))),pages=Math.max(1,Math.ceil(matches.length/50));page=Math.min(Math.max(0,page),pages-1);box.querySelector('[data-local-count]').textContent=(kind==='properties'?'매물':'고객')+' '+matches.length.toLocaleString()+'건 · '+(page+1)+' / '+pages+'페이지';const list=box.querySelector('[data-local-list]');list.replaceChildren();for(const entry of matches.slice(page*50,(page+1)*50)){const b=document.createElement('button');b.type='button';b.style.cssText='display:block;width:100%;text-align:left;margin:0 0 7px;padding:10px;background:white;color:#164d52;border:1px solid #bcd3d4;border-radius:7px';b.textContent=entry.title+' · '+entry.source;b.onclick=()=>{selectedEntry=entry;box.querySelector('[data-local-edit]').disabled=false;box.querySelector('[data-local-title]').textContent=entry.title+' · '+entry.source;box.querySelector('[data-local-detail]').textContent=lmLocalDescribe(entry.value)};list.appendChild(b)}box.querySelector('[data-local-prev]').disabled=page===0;box.querySelector('[data-local-next]').disabled=page>=pages-1}
+ box.querySelectorAll('[data-local-kind]').forEach(b=>b.onclick=()=>{selectedEntry=null;box.querySelector('[data-local-edit]').disabled=true;kind=b.dataset.localKind;entries=lmLocalEntries(snapshot,kind);page=0;box.querySelector('[data-local-title]').textContent='자료를 선택하세요';box.querySelector('[data-local-detail]').textContent='';draw()});
  box.querySelector('[data-local-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>{page=0;draw()},180)};box.querySelector('[data-local-prev]').onclick=()=>{page--;draw()};box.querySelector('[data-local-next]').onclick=()=>{page++;draw()};
- box.querySelector('[data-local-return]').onclick=()=>{if(!navigator.onLine){box.querySelector('[data-local-count]').textContent='인터넷 연결 후 온라인 화면으로 돌아갈 수 있습니다.';return}if(lmOfflineTest()||!authToken||!cloudReady){const url=new URL(location.href);url.searchParams.delete('lm-offline-test');location.href=url.href;return}window.lmOfflineMode=false;box.remove();void window.lmEnsureOfflineArchives?.()};draw();return true;
+ box.querySelector('[data-local-return]').onclick=()=>{if(!navigator.onLine){box.querySelector('[data-local-count]').textContent='인터넷 연결 후 온라인 화면으로 돌아갈 수 있습니다.';return}const url=new URL(location.href);url.searchParams.delete('lm-offline-test');location.href=url.href;return};draw();return true;
 }
 function lmSetupOfflineUI(){
  if(document.getElementById('lmLocalOpen'))return;
@@ -2343,10 +2378,171 @@ function lmSetupOfflineUI(){
  const update=document.createElement('button');update.type='button';update.id='lmLocalRefresh';update.textContent='PC 사본 갱신';update.onclick=async()=>{update.disabled=true;try{if(!cloudReady||!authToken||window.lmOfflineMode)throw Error('온라인 직원 로그인 후 갱신할 수 있습니다.');await window.lmCacheSnapshot(JSON.parse(cloudLastSaved),cloudVersion);await window.lmEnsureOfflineArchives(true)}catch(e){lmLocalStatus(e.message)}finally{update.disabled=false}};info?.appendChild(update);
  lmLocalRead().then(p=>lmLocalStatus(p?'PC 사본 있음 · 마지막 저장 '+new Date(p.at).toLocaleString('ko-KR'):'이 PC 사본 없음 · 로그인 후 자동 준비')).catch(e=>lmLocalStatus('PC 사본 확인 실패: '+e.message));
  if('serviceWorker'in navigator&&location.protocol==='https:'&&!lmOfflineTest()&&navigator.onLine){navigator.serviceWorker.register(new URL('./landmaker-offline-sw.js',location.href).href).then(()=>navigator.serviceWorker.ready).then(()=>{document.documentElement.dataset.lmOfflineShell='ready'}).catch(e=>lmLocalStatus('자료 사본은 유지 · 오프라인 화면 준비 실패: '+e.message))}
- window.addEventListener('offline',()=>{void lmOpenOfflineView()});
+ window.addEventListener('offline',()=>{if(lmSyncActor)window.lmOfflineEditing=true;showSaveStatus('오프라인'+' · 입력은 PC에 보관 후 연결 시 자동 전송합니다.',false);void lmSyncStatus()});
 }
 
-// 웹용: 로컬 자료를 자동으로 올리거나 오프라인 모드로 우회하지 않습니다.
+/* Every saved revision is append-only in IndexedDB before any network write. */
+const lmSyncEngine=window.LMSyncEngine,LM_SYNC_DB='landmaker-sync-journal-v1';
+let lmSyncActor='',lmSyncTail=null,lmSyncSerial=Promise.resolve(),lmSyncBusy=false,lmSyncSaving=0,lmSyncOnlineMode=false,lmSyncTimer;
+window.lmOfflineEditing=false;
+function lmSyncDB(name=LM_SYNC_DB){return new Promise((resolve,reject)=>{const r=indexedDB.open(name,1);r.onupgradeneeded=()=>{r.result.createObjectStore('operations',{keyPath:'id'});r.result.createObjectStore('metadata')};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function lmSyncStore(mode,action,name=LM_SYNC_DB){const d=await lmSyncDB(name);try{return await new Promise((resolve,reject)=>{const tx=d.transaction(['operations','metadata'],mode);let result;const set=x=>result=x;action(tx.objectStore('operations'),tx.objectStore('metadata'),set);tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('PC 저장이 중단됐습니다.'))})}finally{d.close()}}
+async function lmSyncRows(){return lmSyncStore('readonly',(s,m,set)=>{const r=s.getAll();r.onsuccess=()=>set(r.result.sort((a,b)=>a.sequence-b.sequence))})}
+function lmSyncDevice(){let k=localStorage.getItem('landmaker-device-id-v1');if(!k){k=crypto.randomUUID();localStorage.setItem('landmaker-device-id-v1',k)}return k}
+async function lmSyncAppend(changes,reason){
+ if(!lmSyncActor)throw Error('이 PC에서 온라인 직원 확인을 한 번 완료해 주세요.');
+ const operations=changes.map(change=>({...change,id:crypto.randomUUID(),actor_id:lmSyncActor,staff:lmLoggedInStaff,device_id:lmSyncDevice(),created_at:new Date().toISOString()}));
+ await lmSyncStore('readwrite',(s,m)=>{const q=m.get('sequence');q.onsuccess=()=>{let seq=Number(q.result)||0;for(const operation of operations)s.add({id:operation.id,sequence:++seq,operation,status:'pending',reason});m.put(seq,'sequence')}});
+ void lmSyncStatus();return operations;
+}
+async function lmSyncMark(id,result){await lmSyncStore('readwrite',s=>{const q=s.get(id);q.onsuccess=()=>{if(!q.result)throw Error('PC 원본을 찾지 못했습니다.');s.put({...q.result,status:result.status,result,acknowledged_at:new Date().toISOString()})}})}
+async function lmSyncMaterialize(){
+ const snapshot=await lmLocalRead();if(!snapshot?.data)throw Error('이 PC에 보관된 자료가 없습니다. 온라인 로그인 후 PC 사본을 준비해 주세요.');
+ const state=lmSyncEngine.clone(snapshot.data);state.archives=lmSyncEngine.clone(snapshot.archives||{tables:{}});
+ for(const row of await lmSyncRows())if(!row.checkpointed&&row.status!=='superseded')lmSyncEngine.apply(state,row.operation);
+ return {...snapshot,data:Object.fromEntries(Object.entries(state).filter(([k])=>k!=='archives')),archives:state.archives};
+}
+async function lmSyncStatus(){
+ try{const rows=await lmSyncRows(),pending=rows.filter(x=>x.status==='pending').length,conflict=rows.filter(x=>x.status==='conflict').length;
+ const label=(lmSyncSaving?'PC 저장 중 · ':'')+(navigator.onLine&&!lmOfflineTest()?'':'오프라인 · ')+'전송 대기 '+pending+'건 · 충돌 '+conflict+'건';
+ let b=document.getElementById('lmSyncStatus');if(!b){b=document.createElement('button');b.type='button';b.id='lmSyncStatus';b.style.cssText='position:fixed;right:18px;bottom:108px;z-index:2147483641;max-width:600px;background:#075e6a;color:white';b.onclick=()=>void lmSyncCenter();document.body.append(b)}b.textContent=label+' · 저장 내역';
+ }catch(e){showSaveStatus('동기화 기록 확인 실패: '+e.message,true)}
+}
+function lmQueueDurableSave(){
+ const captured=lmSyncEngine.clone(db);lmSyncSaving++;void lmSyncStatus();
+ const task=lmSyncSerial.catch(()=>{}).then(async()=>{
+  if(!lmSyncTail)lmSyncTail=JSON.parse(cloudLastSaved||JSON.stringify(captured));
+  const changes=lmSyncEngine.diff(lmSyncTail,captured);
+  await lmSyncAppend(changes,'매물·고객·일정 저장');lmSyncTail=captured;
+  showSaveStatus('이 PC 저장 완료 · '+changes.length+'건 자동 전송 대기',false);
+ });lmSyncSerial=task;
+ task.then(()=>void lmSyncFlush()).catch(e=>{showSaveStatus('PC 저장 실패 · 화면을 닫지 마세요: '+e.message,true);alert('PC에 입력내용을 저장하지 못했습니다. 화면을 닫지 말고 백업해 주세요.\n'+e.message)}).finally(()=>{lmSyncSaving--;void lmSyncStatus()});return task;
+}
+async function lmSyncRequest(operation,testId=null){
+ if(lmOfflineTest()||!navigator.onLine||window.lmOfflineMode)throw Error('연결 대기 중');
+ if(!authToken)throw Error('직원 로그인 후 자동 전송됩니다. PC 원본은 보존되어 있습니다.');
+ await ensureFreshAuth();
+ const r=await fetchWithTimeout(SB_URL+'/rest/v1/rpc/lm_sync_apply_v1',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+authToken,'Content-Type':'application/json'},body:JSON.stringify({p_operation:operation,p_test_id:testId})},30000);
+ const result=await r.json();if(!r.ok)throw Error(result.message||'동기화 서버 '+r.status);if(!['applied','conflict'].includes(result.status)||result.id!==operation.id)throw Error('서버의 저장 확인번호가 올바르지 않습니다. PC 원본을 유지합니다.');return result;
+}
+async function lmSyncCheckpoint(){
+ const rows=(await lmSyncRows()).filter(x=>x.status==='applied'&&!x.checkpointed);if(!rows.length)return;
+ const latest=await cloudRPC('lm_cloud_read',{});if(!latest?.data||!Number.isFinite(latest.version))throw Error('저장 후 확인 조회 실패');
+ const old=await lmLocalRead(),archives=lmSyncEngine.clone(old?.archives||{tables:{}});archives.tables??={};
+ for(const row of rows.filter(x=>x.operation.target==='table')){
+  const op=row.operation,key=lmSyncEngine.tableKeys[op.collection];
+  const records=await lmArchiveNetwork(op.collection,{select:'*',[key]:'eq.'+op.record_id,limit:'1'});
+  archives.tables[op.collection]=(archives.tables[op.collection]||[]).filter(x=>String(x[key])!==op.record_id).concat(records);
+ }
+ await window.lmCacheSnapshot(latest.data,latest.version,archives);
+ await lmSyncStore('readwrite',s=>{for(const row of rows){const q=s.get(row.id);q.onsuccess=()=>{if(q.result?.status==='applied')s.put({...q.result,checkpointed:true})}}});
+}
+async function lmSyncFlush(){
+ if(lmSyncBusy||lmSyncSaving||!navigator.onLine||lmOfflineTest()||window.lmOfflineMode||!authToken)return;
+ lmSyncBusy=true;
+ try{
+  const run=async()=>{for(const row of await lmSyncRows()){
+   if(row.status!=='pending')continue;
+   if(row.operation.actor_id!==lmSyncActor)continue;
+   const result=await lmSyncRequest(row.operation);await lmSyncMark(row.id,result);
+  }await lmSyncCheckpoint()};
+  if(navigator.locks)await navigator.locks.request('landmaker-journal-sender-v1',run);else await run();
+ }catch(e){showSaveStatus('자동 전송 대기 · PC 원본 유지: '+e.message,true)}finally{lmSyncBusy=false;void lmSyncStatus()}
+}
+const lmArchiveNetwork=archiveAPI;
+async function lmSyncStartEditing(){
+ await lmSyncSerial.catch(()=>{});const snapshot=await lmSyncMaterialize();
+ lmSyncActor=snapshot.staffId||lmSyncActor;if(!lmSyncActor)throw Error('온라인 직원 로그인으로 이 PC의 작업자를 먼저 확인해 주세요.');
+ db={...empty(),...snapshot.data};lmSyncTail=lmSyncEngine.clone(db);cloudLastSaved=JSON.stringify(db);cloudVersion=snapshot.version;lmAuditBaseline=lmAuditSnapshot();
+ lmLoggedInStaff=snapshot.staff||lmLoggedInStaff;window.lmOfflineEditing=true;window.lmOfflineMode=false;
+ document.getElementById('authGate').hidden=true;document.getElementById('authInfo').hidden=false;document.getElementById('authStaffName').textContent=lmLoggedInStaff+' 님 · PC 작업';
+ document.getElementById('lmLocalViewer')?.remove();return snapshot;
+}
+async function lmSyncOpenNative(kind,record){
+ try{await lmSyncStartEditing();if(record){if(kind==='customers'){openCustomer(record.id);nav()}else{editing={type:'property',id:record.id};window.lmShowPropertyForm=true;tab='properties';render()}}else{editing=null;tab=kind==='customers'?'customers':'properties';if(kind==='properties')window.lmShowPropertyForm=true;render()}
+ }catch(e){alert(e.message)}
+}
+async function lmSyncLocalTableSave(table,before,after){
+ const key=lmSyncEngine.tableKeys[table];if(!key)throw Error('이 종류는 오프라인 입력을 지원하지 않습니다.');
+ await lmSyncAppend([{target:'table',collection:table,record_id:String(after[key]),before:before||null,after}],'기존 엑세스·원노트 수정');void lmSyncFlush();
+}
+async function lmSyncEditArchive(entry){
+ const s=await lmSyncMaterialize(),tables=s.archives?.tables||{},value=entry.value;let table,previous,fields,title;
+ if(entry.source==='엑세스 매물'){
+  const row=value.원본;table='lm_access_property_edits';previous=(tables[table]||[]).find(x=>String(x.source_id)===String(row.id));
+  const data={...row.original_data,...(previous?.edited_data||{})};fields=Object.entries(data).filter(([k,v])=>!k.startsWith('__')&&(typeof v==='string'||typeof v==='number'||v===null)).map(([key,v])=>({key,label:key,value:v??''}));title='엑세스 매물 수정';
+ }else{
+  const isNote=entry.source==='원노트',row=isNote?value.원문:value.원본;table=isNote?'lm_onenote_customer_profiles':'lm_access_customer_profiles';const key=lmSyncEngine.tableKeys[table],rid=String(isNote?(row.source_page_id??row.id):row.id);previous=(tables[table]||[]).find(x=>String(x[key])===rid);
+  fields=[['customer_name','고객명'],['phone','연락처'],['address','주소·지역'],['customer_status','고객분류'],['memo','메모']].map(([key,label])=>({key,label,value:previous?.[key]||''}));title=isNote?'원노트 고객정보 수정':'엑세스 고객정보 수정';
+ }
+ const panel=document.createElement('div');panel.style.cssText='position:fixed;inset:0;overflow:auto;background:#f5f8f8;padding:25px;z-index:2147483643';panel.setAttribute('role','dialog');panel.setAttribute('aria-label',title);
+ panel.innerHTML='<h2>'+esc(title)+'</h2><p>PC에 먼저 저장하고, 온라인 직원 로그인 상태에서 자동 전송합니다. 충돌하면 양쪽 내용을 보관합니다.</p><form><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px">'+fields.map((f,i)=>'<label>'+esc(f.label)+'<textarea data-field="'+i+'">'+esc(f.value)+'</textarea></label>').join('')+'</div>'+(entry.source==='엑세스 고객'?'<label>새 상담내용<textarea data-consult></textarea></label>':'')+'<div class="row"><button type="submit">이 PC에 저장</button><button type="button" data-cancel>닫기</button></div><p data-state role="status"></p></form>';
+ document.body.appendChild(panel);panel.querySelector('[data-cancel]').onclick=()=>panel.remove();
+ panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const b=panel.querySelector('[type=submit]');b.disabled=true;try{
+  let after;if(table==='lm_access_property_edits'){const r=value.원본;after={...(previous||{}),source_id:r.id,source_table:r.source_table,source_row_number:r.source_row_number,edited_data:{...r.original_data,...(previous?.edited_data||{})}};for(let i=0;i<fields.length;i++)after.edited_data[fields[i].key]=panel.querySelector('[data-field="'+i+'"]').value}
+  else{const r=entry.source==='원노트'?value.원문:value.원본,key=lmSyncEngine.tableKeys[table];after={...(previous||{}),[key]:String(entry.source==='원노트'?(r.source_page_id??r.id):r.id)};for(let i=0;i<fields.length;i++)after[fields[i].key]=panel.querySelector('[data-field="'+i+'"]').value}
+  await lmSyncLocalTableSave(table,previous,after);previous=after;
+  const consult=panel.querySelector('[data-consult]');if(consult?.value.trim()){const r={id:crypto.randomUUID(),import_row_id:value.원본.id,consulted_on:today(),staff_name:lmLoggedInStaff,content:consult.value.trim()};await lmSyncLocalTableSave('lm_access_customer_consultations',null,r);consult.value=''}
+  panel.querySelector('[data-state]').textContent='이 PC에 저장했습니다. 자동 전송 상태는 저장 내역에서 확인하세요.';
+ }catch(ex){panel.querySelector('[data-state]').textContent='저장 실패: '+ex.message}finally{b.disabled=false}};
+}
+async function lmSyncCenter(){
+ const rows=await lmSyncRows(),host=document.createElement('div');host.style.cssText='position:fixed;inset:0;background:white;padding:22px;overflow:auto;z-index:2147483644';host.setAttribute('role','dialog');host.setAttribute('aria-label','동기화 저장 내역');
+ host.innerHTML='<h2>PC 저장·자동 병합 내역</h2><p>전송 순서는 이 PC의 저장 순서입니다. 다른 PC와는 서버에서 한 건씩 처리하며, 충돌 원본과 전송 완료 원본도 보관합니다.</p><div class="row"><button data-retry>지금 전송 재시도</button><button data-export>전체 저장기록 백업</button><button data-test>4명 동기화 안전검증</button><button data-close>닫기</button></div><pre data-test-out style="white-space:pre-wrap"></pre><div data-rows></div>';
+ document.body.appendChild(host);host.querySelector('[data-close]').onclick=()=>host.remove();host.querySelector('[data-retry]').onclick=()=>void lmSyncFlush();
+ host.querySelector('[data-export]').onclick=async()=>{const data=await lmSyncRows(),url=URL.createObjectURL(new Blob([JSON.stringify({format:'landmaker-operation-journal-v1',at:new Date().toISOString(),operations:data},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='landmaker-pc-journal-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000)};
+ host.querySelector('[data-test]').onclick=()=>void lmSyncRunVerification(host.querySelector('[data-test-out]'));
+ const list=host.querySelector('[data-rows]');for(const row of rows.slice().reverse().slice(0,200)){
+  const article=document.createElement('article');article.style.cssText='padding:12px;border:1px solid #cbdadb;margin:9px 0';
+  const op=row.operation;article.innerHTML='<b>'+esc({pending:'전송 대기',applied:'서버 저장 확인',conflict:'충돌 · 양쪽 보관',superseded:'확인 후 대체'}[row.status]||row.status)+'</b> · '+esc(op.collection)+' · '+esc(op.staff)+'<p>'+esc(op.created_at)+' · 확인번호 '+esc(op.id)+'</p>';
+  const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='변경 전·내 입력·서버 결과 보기';pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify({변경전:op.before,내입력:op.after,서버결과:row.result},null,2);details.append(summary,pre);article.append(details);
+  if(row.status==='conflict'){
+   const keep=document.createElement('button');keep.textContent='서버 내용 유지 · 내 원본은 보관';keep.onclick=async()=>{if(!confirm('내 수정 원본은 기록에 보관하고 서버 내용을 유지할까요?'))return;await lmSyncStore('readwrite',s=>{s.put({...row,status:'superseded',resolution:'keep-server'})});article.remove();void lmSyncStatus()};article.append(keep);
+   const edit=document.createElement('button');edit.textContent='내용을 검토해 병합본 입력';edit.onclick=()=>{const textarea=document.createElement('textarea');textarea.style.cssText='width:100%;min-height:230px';textarea.value=JSON.stringify(op.after,null,2);const send=document.createElement('button');send.textContent='검토한 병합본 저장';send.onclick=async()=>{try{const after=JSON.parse(textarea.value);if(!confirm('서버 원본과 내 수정 원본을 보관하고 검토한 내용을 전송할까요?'))return;await lmSyncAppend([{target:op.target,collection:op.collection,record_id:op.record_id,before:row.result.remote??null,after}], '충돌 검토 후 병합본');await lmSyncStore('readwrite',s=>s.put({...row,status:'superseded',resolution:'reviewed-replacement'}));article.remove();void lmSyncFlush()}catch(e){alert(e.message)}};article.append(textarea,send)};article.append(edit);
+  }list.append(article);
+ }await lmSyncStatus();
+}
+window.addEventListener('online',()=>{void lmSyncFlush();void lmSyncStatus()});
+window.addEventListener('beforeunload',e=>{if(lmSyncSaving){e.preventDefault();e.returnValue='PC 저장을 완료하는 중입니다.'}});
+lmSyncTimer=setInterval(()=>{void lmSyncFlush()},15000);
+void lmSyncStatus();
+
+async function lmSyncRunVerification(output){
+ output.textContent='가상 PC 4개의 독립 저장소와 격리된 시험 서버를 검증 중입니다. 실제 고객·매물은 변경하지 않습니다.\n';
+ const lines=[],testId=crypto.randomUUID(),key='SYNC-TEST-'+testId,stores=[];
+ const assert=(ok,label)=>{if(!ok)throw Error(label);lines.push('통과 · '+label);output.textContent=lines.join('\n')};
+ const op=(device,record,before,after)=>({id:crypto.randomUUID(),actor_id:lmSyncActor,device_id:device,target:'core',collection:'customers',record_id:record,before,after});
+ const send=x=>lmSyncRequest(x,testId);
+ try{
+  if(!authToken||!lmSyncActor)throw Error('온라인 직원 로그인 후 실행해 주세요.');
+  for(let i=0;i<4;i++){
+   const name='landmaker-isolated-sync-test-'+testId+'-'+i;stores.push(name);const operation=op('가상PC-'+i,key+'-'+i,null,{id:key+'-'+i,name:'가상 고객 '+i,phone:''});
+   await lmSyncStore('readwrite',s=>s.add({id:operation.id,operation,status:'pending'}),name);
+  }
+  const queues=[];for(const name of stores){const rows=await lmSyncStore('readonly',(s,m,set)=>{const r=s.getAll();r.onsuccess=()=>set(r.result)},name);queues.push(rows[0]);}
+  assert(queues.length===4&&queues.every(x=>x.status==='pending'),'4개 PC 독립 보관 · 저장소 재열기 후 입력 유지');
+  const first=await send(queues[2].operation); // Deliberately do not acknowledge: simulate accepted request with lost response.
+  const repeated=await send(queues[2].operation);
+  assert(first.status==='applied'&&repeated.version===first.version,'서버 저장 직후 응답 유실 · 같은 전송번호 재시도 중복 없음');
+  const rest=await Promise.all([0,3,1].map(i=>send(queues[i].operation)));
+  assert(rest.every(x=>x.status==='applied'),'4개 PC의 신규 입력 동시 재접속 · 모두 반영');
+  const base={id:key+'-shared',name:'기준 이름',phone:'기준 연락처',nested:{a:'원본',b:'원본'}};
+  await send(op('가상PC-0',base.id,null,base));
+  const a=op('가상PC-0',base.id,base,{...base,name:'직원A 변경'}),b=op('가상PC-1',base.id,base,{...base,phone:'직원B 변경'});
+  const ab=await Promise.all([send(a),send(b)]);
+  const probe=await send(op('확인',base.id,null,null));
+  assert(ab.every(x=>x.status==='applied')&&probe.value.name==='직원A 변경'&&probe.value.phone==='직원B 변경','같은 고객의 서로 다른 항목 자동 병합');
+  const conflict=await send(op('가상PC-2',base.id,base,{...base,name:'다른 이름'}));
+  assert(conflict.status==='conflict'&&conflict.remote.name==='직원A 변경','같은 항목 충돌 · 서버 원본 유지 · 내 수정 기록 보관');
+  const replay=await send(queues[2].operation);assert(replay.version===first.version,'다른 변경 후 과거 전송 재시도 · 최신 자료 덮어쓰기 없음');
+  for(let i=0;i<4;i++){const check=await send(op('확인',key+'-'+i,null,null));assert(check.value?.name==='가상 고객 '+i,'PC '+(i+1)+' 입력 최종 존재 확인');}
+  const wrong={...queues[0].operation,after:{...queues[0].operation.after,name:'변조'}};let rejected=false;try{await send(wrong)}catch{rejected=true}assert(rejected,'같은 전송번호로 다른 내용 전송 차단');
+  output.textContent=lines.join('\n')+'\n\n검증 완료. 실제 업무자료 변경 없음. 시험번호 '+testId;
+ }catch(e){output.textContent=lines.join('\n')+'\n실패 · '+e.message;throw e}
+}
+
+// Durable per-record synchronization is enabled after staff validation.
+
 (async()=>{
  openAuth();lmSetupOfflineUI();
  if(!navigator.onLine||lmOfflineTest()){await lmOpenOfflineView();lmFinishSessionLoading();return;}
@@ -2865,7 +3061,7 @@ const observer=new MutationObserver(()=>{if(el('lmParcelLookup')&&!el('lmParcelL
 <script>
 /* Full archive backup: GET only. The app's db, cloud write RPC, and source tables are never changed. */
 (()=>{
- const tables=[['lm_import_batches','id'],['lm_import_rows','id'],['lm_access_property_edits','source_id'],['lm_access_customer_profiles','import_row_id'],['lm_access_customer_consultations','id'],['lm_onenote_pages','source_page_id'],['lm_onenote_edits','source_page_id'],['lm_onenote_customer_profiles','source_page_id'],['lm_onenote_customer_links','id']];
+ const tables=[['lm_new_properties','id'],['lm_import_batches','id'],['lm_import_rows','id'],['lm_access_property_edits','source_id'],['lm_access_customer_profiles','import_row_id'],['lm_access_customer_consultations','id'],['lm_onenote_pages','source_page_id'],['lm_onenote_edits','source_page_id'],['lm_onenote_customer_profiles','source_page_id'],['lm_onenote_customer_links','id']];
  let busy=false;
  const progress=text=>{for(const id of ['lmLocalReady','lm-cache-status','localBackupStatus','cloudBackupStatus']){const el=document.getElementById(id);if(el)el.textContent=text}};
  async function fetchPage(table,key,after){
@@ -2935,3 +3131,4 @@ window.lmTradeHistoryText=function(rows,pnu){return rows.filter(r=>r.isCurrent!=
 </script>
 
 <script>document.getElementById('lm-cache-view')?.addEventListener('click',()=>void lmOpenOfflineView());document.getElementById('lm-cache-check')?.addEventListener('click',()=>lmLocalRead().then(p=>lmLocalStatus(p?'PC 사본 있음 · '+p.at:'이 PC에 저장된 사본이 없습니다.')));</script>
+
