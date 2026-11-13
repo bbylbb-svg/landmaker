@@ -2313,11 +2313,12 @@ function lmLocalEntries(snapshot,kind){
  for(const r of d.records||[]){const key=String(r.customerId||'');if(!records.has(key))records.set(key,[]);records.get(key).push(r)}
  const add=(source,value,title)=>out.push({source,value,title:lmLocalClean(title||source),search:(JSON.stringify(value)+' '+lmLocalClean(title||source)).toLowerCase()});
  for(const row of d[kind]||[]){const value=kind==='customers'?{...row,상담기록:records.get(String(row.id))||[]}:row;add(kind==='properties'?'등록 매물':'등록 고객',value,row.title||row.name||[...(row.parcels||[])].map(p=>[p.dong,p.san?'산':'',p.main,p.sub?'-'+p.sub:''].join(' ').trim()).join(' / '))}
+ const consultations=new Map();for(const n of tables.lm_access_customer_consultations||[]){const k=String(n.import_row_id);if(!consultations.has(k))consultations.set(k,[]);consultations.get(k).push(n)}
  const edits=new Map((tables[kind==='properties'?'lm_access_property_edits':'lm_access_customer_profiles']||[]).map(x=>[String(x.source_id??x.import_row_id),x]));
- for(const row of tables.lm_import_rows||[]){const isCustomer=/고객/.test(row.source_table||'');if(kind==='customers'?!isCustomer:!/^기본자료[0-9]*$/.test(row.source_table||''))continue;const data=row.original_data||{},value={원본:row,...(edits.has(String(row.id))?{수정자료:edits.get(String(row.id))}:{})};const title=['고객명','성명','상호','이름','매물명','소재지','지번','주소','토지소재지'].map(k=>data[k]).find(x=>typeof x==='string'&&x.trim());add(isCustomer?'엑세스 고객':'엑세스 매물',value,title||row.source_table+' #'+row.source_row_number)}
+ for(const row of tables.lm_import_rows||[]){const isCustomer=/고객/.test(row.source_table||'');if(kind==='customers'?!isCustomer:!/^기본자료[0-9]*$/.test(row.source_table||''))continue;const data=row.original_data||{},value={원본:row,...(edits.has(String(row.id))?{수정자료:edits.get(String(row.id))}:{}),...(isCustomer?{상담기록:consultations.get(String(row.id))||[]}:{} )};const title=['고객명','성명','상호','이름','매물명','소재지','지번','주소','토지소재지'].map(k=>data[k]).find(x=>typeof x==='string'&&x.trim());add(isCustomer?'엑세스 고객':'엑세스 매물',value,title||row.source_table+' #'+row.source_row_number)}
  if(kind==='customers'){
   const notes=new Map((tables.lm_onenote_edits||[]).map(x=>[String(x.source_page_id),x])),profiles=new Map((tables.lm_onenote_customer_profiles||[]).map(x=>[String(x.source_page_id),x]));
-  for(const row of tables.lm_onenote_pages||[])add('원노트',{원문:row,수정자료:notes.get(String(row.id)),고객정보:profiles.get(String(row.id))},row.title||row.name||'원노트 상담자료');
+  for(const row of tables.lm_onenote_pages||[])add('원노트',{원문:row,수정자료:notes.get(String(row.source_page_id??row.id)),고객정보:profiles.get(String(row.source_page_id??row.id))},row.title||row.name||'원노트 상담자료');
  }return out;
 }
 async function lmOpenOfflineView(){
@@ -2864,7 +2865,7 @@ const observer=new MutationObserver(()=>{if(el('lmParcelLookup')&&!el('lmParcelL
 <script>
 /* Full archive backup: GET only. The app's db, cloud write RPC, and source tables are never changed. */
 (()=>{
- const tables=[['lm_import_batches','id'],['lm_import_rows','id'],['lm_access_property_edits','source_id'],['lm_access_customer_profiles','import_row_id'],['lm_access_customer_consultations','id'],['lm_onenote_pages','id'],['lm_onenote_edits','source_page_id'],['lm_onenote_customer_profiles','source_page_id'],['lm_onenote_customer_links','id']];
+ const tables=[['lm_import_batches','id'],['lm_import_rows','id'],['lm_access_property_edits','source_id'],['lm_access_customer_profiles','import_row_id'],['lm_access_customer_consultations','id'],['lm_onenote_pages','source_page_id'],['lm_onenote_edits','source_page_id'],['lm_onenote_customer_profiles','source_page_id'],['lm_onenote_customer_links','id']];
  let busy=false;
  const progress=text=>{for(const id of ['lmLocalReady','lm-cache-status','localBackupStatus','cloudBackupStatus']){const el=document.getElementById(id);if(el)el.textContent=text}};
  async function fetchPage(table,key,after){
