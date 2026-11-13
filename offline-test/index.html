@@ -923,7 +923,7 @@ function lmInitUnifiedCustomerList(){
   const tasks=[];
   if(source==='all'||source==='access'){
    if(category&&!['매수','임차','매도','임대','완료고객'].includes(category))counts.access=0;
-   else if(q){counts.access=null;issues.push('Access 검색 결과 전체 건수는 제공되지 않습니다.')}
+   else if(q&&lmIsLocal()){tasks.push(lmOfflineArchive('lm_import_rows',{source_table:'in.(\"고객매매\",\"고객임대\")',original_data:'cs.'+JSON.stringify(q.trim())},'HEAD').then(n=>counts.access=n).catch(e=>{counts.access=null;issues.push(e.message)}))}else if(q){counts.access=null;issues.push('Access 검색 결과 전체 건수는 제공되지 않습니다.')}
    else{
     const tables=category==='매수'?['고객매매']:category==='임차'?['고객임대']:['고객매매','고객임대'];
     tasks.push(serverCount('lm_import_rows',{select:'id',source_table:'in.('+tables.map(x=>'"'+x+'"').join(',')+')'}).then(n=>counts.access=n).catch(e=>{counts.access=null;issues.push('Access 건수: '+e.message)}));
@@ -1062,7 +1062,7 @@ function lmInitUnifiedCustomerList(){
  $u('cUnifiedCheckAll').onchange=e=>{for(const r of rows){if(e.target.checked)selected.add(r.key);else selected.delete(r.key)}renderRows()};
  const changeCompletion=async done=>{
   const picked=rows.filter(r=>selected.has(r.key));if(!picked.length){alert('먼저 고객을 선택해 주세요.');return}
-  if(!authToken||!cloudReady){alert('공동저장 로그인 후 이용할 수 있습니다.');return}
+  if((!authToken||!cloudReady)&&!window.lmOfflineEditing){alert('공동저장 로그인 후 이용할 수 있습니다.');return}
   if(cloudBusy||cloudPending){alert('공동 서버 저장이 진행 중입니다. 완료 후 다시 시도해 주세요.');return}
   if(!confirm(`선택한 ${picked.length}건을 ${done?'완료고객으로 변경':'완료 취소'}할까요?\nAccess·원노트 원본은 변경하지 않습니다.`))return;
   const before=JSON.stringify(db);const overrides=overrideMap();
