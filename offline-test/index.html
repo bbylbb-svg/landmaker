@@ -2147,6 +2147,7 @@ window.lmPropertyDraftDirty=false;
 const LM_PROPERTY_DRAFT_KEY='lm_property_draft_v148';
 let lmPropertyDraftTimer=0, lmPropertyRestoring=false;
 function lmCapturePropertyDraft(){
+ if(new URL(location.href).searchParams.get('lm-form-check')==='1')return;
  const f=document.querySelector('#propertyForm');if(!f||!window.lmPropertyDraftDirty)return;
  const fields=[];
  for(const el of f.querySelectorAll('input,select,textarea,[contenteditable="true"]')){
@@ -2156,6 +2157,7 @@ function lmCapturePropertyDraft(){
  try{localStorage.setItem(LM_PROPERTY_DRAFT_KEY,JSON.stringify({at:Date.now(),fields,editingId:editing?.id||'',tab}));}catch(err){console.warn('매물 임시저장 실패',err)}
 }
 function lmRestorePropertyDraft(){
+ if(new URL(location.href).searchParams.get('lm-form-check')==='1')return;
  const f=document.querySelector('#propertyForm');if(!f||f.dataset.lmDraftRestoreAsked==='1'||lmPropertyRestoring||window.lmPropertyDraftDirty)return;
  let d;try{d=JSON.parse(localStorage.getItem(LM_PROPERTY_DRAFT_KEY)||'null')}catch{return}
  if(!d||!d.fields||Date.now()-d.at>7*86400000)return;
@@ -3052,7 +3054,7 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
    const parking=(r,keys)=>{const vals=keys.map(k=>value(r,[k]));return vals.every(v=>v!==''&&Number.isFinite(Number(v)))?String(vals.reduce((n,v)=>n+Number(v),0)):''};
    const relatedLots=r=>[...new Set(associated(lotRecords,r).map(z=>{const main=value(z,['atchBun']);if(!main)return value(z,['atchEtcJibunNm']);const sub=value(z,['atchJi']),code=value(z,['atchSigunguCd'])+value(z,['atchBjdongCd']);const different=code.length===10&&code!==selected.sigunguCd+selected.bjdongCd;return (different?'법정동코드 '+code+' ':'')+(value(z,['atchPlatGbCd'])==='1'?'산 ':'')+Number(main)+(Number(sub)?'-'+Number(sub):'')} ).filter(Boolean))].join(', ');
    const sewageFields=r=>{const list=associated(sewageRecords,r);return {facility:list.length?'오수정화시설':'',type:[...new Set(list.map(z=>[value(z,['modeCdNm']),value(z,['etcMode'])].filter(Boolean).join(' / ')).filter(Boolean))].join('; '),capacity:list.map(z=>[value(z,['capaPsper'])!==''?value(z,['capaPsper'])+' 인용':'',value(z,['capaLube'])!==''?value(z,['capaLube'])+' ㎥':''].filter(Boolean).join(' / ')).filter(Boolean).join('; ')}};
-   const floorOrder=z=>{const kind=value(z,['flrGbCdNm']),name=value(z,['flrNoNm']),n=Number(value(z,['flrNo']))||Number(name.match(/\d+/)?.[0])||0;return /지하/.test(kind+name)?-n:/옥탑/.test(kind+name)?10000+n:n};
+   const floorOrder=z=>{const kind=value(z,['flrGbCdNm']),name=value(z,['flrNoNm']),n=Math.abs(Number(value(z,['flrNo']))||Number(name.match(/\d+/)?.[0])||0);return /지하/.test(kind+name)?-n:/옥탑/.test(kind+name)?10000+n:n};
    const floorsFor=r=>floorRecords.filter(z=>floorOwner(z)===r).sort((a,b)=>floorOrder(a)-floorOrder(b));
    const floorName=r=>{
     const name=value(r,['flrNoNm']),kind=value(r,['flrGbCdNm']);
