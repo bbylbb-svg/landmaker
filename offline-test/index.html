@@ -1273,33 +1273,27 @@ function propertyPriceHistoryRows(p={}){
 function lmRegistryHidden(p){return ['landRegistryName','landRegistryCheckedAt','buildingRegistryName','buildingRegistryCheckedAt'].map(name=>`<input type="hidden" name="${name}" value="${esc(p[name]||'')}">`).join('')}
 function lmScreenshotPanel(kind){const title=kind==='land'?'토지대장':'건축물대장';return `<section class="lm-screenshot-ocr" data-ocr-kind="${kind}" style="border:1px solid #b9d4d6;background:#f4faf9;border-radius:10px;padding:14px;margin:14px 0"><b>${title} 캡처 → 소유자명 추출</b><p class="muted">아래 칸 클릭 후 Ctrl+V로 붙여넣으세요. 소유자명·공동명의만 검토하여 추가합니다. 주소·면적·건물정보는 API 조회값을 유지하며, 공동자료에 자동 저장하지 않습니다.</p><div data-ocr-paste role="textbox" aria-label="${title} 스크린샷 붙여넣기" contenteditable="true" style="padding:16px;border:2px dashed #73a6a9;border-radius:8px;background:white;min-height:52px">소유자 부분을 캡처 → 이 칸 클릭 → Ctrl+V</div><label>${title} 이미지 파일 선택<input data-ocr-file type="file" accept="image/png,image/jpeg,image/webp,image/bmp"></label><p data-ocr-status role="status" class="muted">가려진 이름은 복원하지 않습니다. 기존 소유주는 덮어쓰지 않고 유지합니다.</p><img data-ocr-image alt="붙여넣은 소유자 부분 캡처" hidden style="max-width:100%;max-height:220px;object-fit:contain"><div data-ocr-review hidden><h4>소유자명 검토 · 원본과 대조하세요</h4><p class="muted">현재 소유자인지 확인하고 잘못 읽힌 이름은 수정하세요. 공동명의는 쉼표로 구분합니다. 소유자 변동 이력·공유지연명부에는 과거 소유자가 포함될 수 있습니다.</p><div data-ocr-fields class="grid"></div><label>추출 원문 (확인용 · 면적 등은 반영하지 않음)<textarea data-ocr-raw rows="4" readonly></textarea></label><button type="button" data-ocr-apply>검토한 명의를 소유주 칸에 반영</button></div></section>`}
 function lmScreenshotProposal(raw,kind){
- const t=normalizeExtractText(raw).replace(/성\s+명/g,'성명').replace(/소\s*유\s*자/g,'소유자'),names=[];
- for(const line of t.split('\n')){
-  const m=line.trim().match(/^(?:소유자(?:명)?|소유주(?:명)?|성명(?:\s*\(명칭\))?)\s*[:：]?\s+(.{1,55})$/)||line.trim().match(/^(?:소유자(?:명)?|소유주(?:명)?|성명(?:\s*\(명칭\))?)\s*[:：]\s*(.{1,55})$/);
-  if(m){const name=m[1].trim();if(!/현황|등록번호|주소|변동|성명|지분|소유|\d{6}|[<>]/.test(name)&&!names.includes(name))names.push(name)}
+ const t=normalizeExtractText(raw).replace(/성\s+명/g,'성명').replace(/소\s*유\s*자/g,'소유자');
+ const lines=t.split('\n').map(x=>x.trim()).filter(Boolean),names=[];
+ const stop=/현황|등록번호|주소|변동|성명|지분|소유|면적|발급|열람|대장|검증|문서|인식|담당|현재|과거/;
+ const plausible=x=>!stop.test(x)&&!/[<>]|\d{6}/.test(x)&&(/^[가-힣]{2,5}$/.test(x.replace(/\s+/g,''))||(/^(?:주식회사|유한회사|\(주\)|㈜|재단법인|농업회사법인|사단법인)/.test(x)&&x.length<=45));
+ const add=raw=>{const values=raw.split(/[,;、]+/).map(x=>x.trim()).filter(Boolean);if(!values.length||!values.every(plausible))return false;for(const x of values)if(!names.includes(x))names.push(x);return true};
+ for(const line of lines){
+  const m=line.match(/^(?:소유자(?:명)?|소유주(?:명)?|성명(?:\s*\(?명칭\)?)?)\s*[:：|]?\s+(.+)$/)||line.match(/^(?:소유자(?:명)?|소유주(?:명)?|성명(?:\s*\(?명칭\)?)?)\s*[:：]\s*(.+)$/);
+  if(m)add(m[1].split(/\t|\s{2,}|[|│]/)[0]);
  }
- // Also accept a tight crop containing only a name column, never arbitrary body text.
- if(!names.length){
-  const lines=t.split('\n').map(x=>x.trim()).filter(Boolean).filter(x=>!/^(?:성명(?:\s*\(명칭\))?|소유자(?:명)?)\s*[:：]?$/.test(x));
-  const stop=/토지대장|건축물대장|소유자|현황|등록번호|주소|지분|연명부|성명|지목|면적|발급|변동|공장|근린|과거|현재/;
-  const plausible=x=>!stop.test(x)&&!/[<>]|\d{6}/.test(x)&&(/^[가-힣]{2,5}$/.test(x.replace(/\s+/g,''))||(/주식회사|유한회사|\(주\)|㈜|재단법인|농업회사법인/.test(x)&&x.length<=45));
-  if(lines.length&&lines.length<=8&&lines.every(plausible))for(const line of lines)if(!names.includes(line))names.push(line);
- }
- if(!names.length){
-  const lines=t.split('\n').map(x=>x.trim()).filter(Boolean);
-  const nameOnly=x=>/^[가-힣]{2,5}$/.test(x.replace(/\s/g,''))&&!/주소|성명|면적|지분|소유자|변동|등록|토지|대장|번호|발급|열람|현황|이전|매매|증여/.test(x);
-  for(let i=0;i<lines.length;i++){
-   if(!/^(?:소유자(?:명)?|소유주(?:명)?|성명(?:\s*\(?명칭\)?)?)\s*[:：|]*$/.test(lines[i]))continue;
-   for(let j=i+1;j<Math.min(lines.length,i+7);j++){
-    const candidate=lines[j].split(/\t|\s{2,}|[|│]/)[0].trim();
-    if(nameOnly(candidate)||(/^(?:주식회사|유한회사|㈜|\(주\))/.test(candidate)&&candidate.length<=45)){
-     if(!names.includes(candidate))names.push(candidate);break;
-    }
-   }
+ for(let i=0;i<lines.length;i++){
+  if(!/^(?:소유자(?:명)?|소유주(?:명)?|성명(?:\s*\(?명칭\)?)?)\s*[:：|]*$/.test(lines[i]))continue;
+  for(let j=i+1;j<Math.min(lines.length,i+7);j++){
+   if(/^(?:주소|변동|등록번호|지분|면적|발급|열람)/.test(lines[j]))break;
+   if(add(lines[j].split(/\t|\s{2,}|[|│]/)[0]))break;
   }
  }
+ // A name-column crop is accepted only if every remaining line is a plausible name.
+ if(!names.length){const crop=lines.filter(x=>!/^(?:성명(?:\s*\(?명칭\)?)?|소유자(?:명)?)\s*[:：]?$/.test(x));if(crop.length&&crop.length<=8&&crop.every(plausible))crop.forEach(add)}
  return {ownerName:names.join(', ')};
 }
+
 function bindScreenshotOCR(f){
  if(!f||f.dataset.screenshotOcrBound)return;f.dataset.screenshotOcrBound='1';
  for(const panel of f.querySelectorAll('.lm-screenshot-ocr')){
