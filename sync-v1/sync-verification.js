@@ -28,6 +28,12 @@ async function lmSyncRunVerification(output){
   const replay=await send(queues[2].operation);assert(replay.version===first.version,'다른 변경 후 과거 전송 재시도 · 최신 자료 덮어쓰기 없음');
   for(let i=0;i<4;i++){const check=await send(op('확인',key+'-'+i,null,null));assert(check.value?.name==='가상 고객 '+i,'PC '+(i+1)+' 입력 최종 존재 확인');}
   const wrong={...queues[0].operation,after:{...queues[0].operation.after,name:'변조'}};let rejected=false;try{await send(wrong)}catch{rejected=true}assert(rejected,'같은 전송번호로 다른 내용 전송 차단');
+  const profileId=crypto.randomUUID(),profile={import_row_id:profileId,customer_name:'기준',phone:'원본'};
+  const tableOp=(before,after)=>({...op('프로필 시험',profileId,before,after),target:'table',collection:'lm_access_customer_profiles'});
+  await send(tableOp(null,profile));
+  const edits=await Promise.all([send(tableOp(profile,{...profile,customer_name:'이름 수정'})),send(tableOp(profile,{...profile,phone:'연락처 수정'}))]);
+  const last=edits.slice().sort((a,b)=>b.version-a.version)[0];
+  assert(edits.every(x=>x.status==='applied')&&last.value.customer_name==='이름 수정'&&last.value.phone==='연락처 수정','엑세스 기존 고객의 동시 수정도 항목별 병합');
   output.textContent=lines.join('\n')+'\n\n검증 완료. 실제 업무자료 변경 없음. 시험번호 '+testId;
  }catch(e){output.textContent=lines.join('\n')+'\n실패 · '+e.message;throw e}
 }

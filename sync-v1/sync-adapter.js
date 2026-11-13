@@ -70,6 +70,39 @@ async function lmSyncFlush(){
  }catch(e){lmSyncNextAttempt=Date.now()+Math.min(120000,15000*2**lmSyncFailures++);showSaveStatus('자동 전송 대기 · PC 원본 유지: '+e.message,true)}finally{lmSyncBusy=false;void lmSyncStatus()}
 }
 const lmArchiveNetwork=archiveAPI;
+const lmSyncArchiveBases=new Map();
+function lmSyncMatches(row,params){
+ for(const [key,filter]of Object.entries(params||{})){
+  if(['select','order','limit','offset','on_conflict','or','and'].includes(key))continue;
+  if(typeof filter!=='string')continue;
+  if(filter.startsWith('eq.')&&String(row[key]??'')!==filter.slice(3))return false;
+  if(filter.startsWith('in.(')){const values=filter.slice(4,-1).split(',').map(x=>x.replace(/^"|"$/g,''));if(!values.includes(String(row[key]??'')))return false;}
+ }
+ return true;
+}
+archiveAPI=async function(table,params={},method='GET',body=null){
+ const key=lmSyncEngine.tableKeys[table];
+ if(!key)return lmArchiveNetwork(table,params,method,body);
+ if(method==='GET'){
+  let rows;
+  if(!navigator.onLine||lmOfflineTest()){const snapshot=await lmSyncMaterialize();rows=(snapshot.archives?.tables?.[table]||[]).filter(row=>lmSyncMatches(row,params))}
+  else rows=await lmArchiveNetwork(table,params,method,body);
+  if(!Array.isArray(rows))return rows;
+  for(const row of rows){const identity=String(row[key]??'');if(identity&&!lmSyncArchiveBases.has(table+'|'+identity))lmSyncArchiveBases.set(table+'|'+identity,lmSyncEngine.clone(row))}
+  const optimistic=new Map(rows.map(row=>[String(row[key]),row]));
+  for(const row of await lmSyncRows())if(!row.checkpointed&&row.status!=='superseded'&&row.operation.target==='table'&&row.operation.collection===table){const op=row.operation;if(op.after&&lmSyncMatches(op.after,params))optimistic.set(op.record_id,lmSyncEngine.clone(op.after));else optimistic.delete(op.record_id)}
+  return [...optimistic.values()];
+ }
+ if(!['POST','PATCH'].includes(method))return lmArchiveNetwork(table,params,method,body);
+ if(!body||Array.isArray(body)||typeof body!=='object')throw Error('한 번에 한 자료씩 저장해 주세요.');
+ const identity=String(body[key]??(params[key]?.startsWith('eq.')?params[key].slice(3):key==='id'?crypto.randomUUID():''));
+ if(!identity)throw Error('수정할 자료번호를 찾지 못했습니다. 입력을 유지하고 목록을 다시 확인해 주세요.');
+ let before=lmSyncArchiveBases.get(table+'|'+identity);
+ if(before===undefined){const cache=await lmLocalRead();before=(cache?.archives?.tables?.[table]||[]).find(row=>String(row[key])===identity)||null;}
+ const after={...(before||{}),...lmSyncEngine.clone(body),[key]:identity};
+ await lmSyncLocalTableSave(table,before,after);lmSyncArchiveBases.set(table+'|'+identity,lmSyncEngine.clone(after));
+ await lmSyncFlush();return [after];
+};
 async function lmSyncPull(){
  const latest=await cloudRPC('lm_cloud_read',{});if(!latest?.data||!Number.isFinite(latest.version))throw Error('최신 공동자료 조회 실패');
  if(latest.version===lmSyncLastPulledVersion&&Date.now()-lmSyncLastArchiveRefresh<60000)return;
