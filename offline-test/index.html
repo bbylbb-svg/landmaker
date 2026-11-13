@@ -2140,7 +2140,7 @@ async function cloudRPC(fn,body){if(fn==='lm_cloud_write'){const previous=lmWrit
 async function lmCloudWriteProtected(body){const fn='lm_cloud_write';if(fn==='lm_cloud_write'){try{await lmSafePut(body.p_data,'서버 저장 전 보관')}catch(e){throw Error('PC 복구용 임시저장에 실패하여 서버 저장을 중단했습니다: '+e.message)}}await ensureFreshAuth();const r=await fetchWithTimeout(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json'},body:JSON.stringify(body)},18000);let j;try{j=await r.json()}catch{j=null}if(!r.ok)throw Error('공동 저장 서버 오류 ('+r.status+'): '+JSON.stringify(j));if(fn==='lm_cloud_write'&&j?.ok===true){await window.lmCacheSnapshot(body.p_data,j.version).catch(e=>lmLocalStatus('PC 사본 갱신 실패: '+e.message));try{await lmSafeClearIfSame(JSON.stringify(body.p_data))}catch(e){console.warn('복구 스냅샷 정리 실패',e)}}return j}
 async function lmCloudReadOnly(fn,body){if(lmSyncSandbox&&fn==='lm_cloud_read'){fn='lm_sync_test_read_v1';body={p_test_id:lmSyncSandbox}}await ensureFreshAuth();const r=await fetchWithTimeout(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json'},body:JSON.stringify(body)},18000);let j;try{j=await r.json()}catch{j=null}if(!r.ok)throw Error('공동 서버 오류 ('+r.status+'): '+JSON.stringify(j));return j}
 function lmActiveUnsavedForm(){return !!(document.querySelector('#customerForm') && (tab==='customers'||tab==='quick'||tab==='quickCustomer')) || !!(tab==='quick' && document.querySelector('#source') && document.querySelector('#source').value.trim())}
-async function loadCloud(){const pending=await lmSafeGet();if(pending){await lmSafeNotify();throw Error('PC에 미전송 자료가 있습니다. 복구 파일을 다운로드하고 충돌을 해결하기 전에는 서버 자료로 화면을 덮어쓰지 않습니다.')}const j=await cloudRPC('lm_cloud_read',{});if(!j||typeof j.version!=='number'||!j.data)throw Error('공동 데이터 읽기 응답이 올바르지 않습니다.');db={...empty(),...j.data};cloudVersion=j.version;cloudLastSaved=JSON.stringify(db);lmAuditBaseline=lmAuditSnapshot();cloudReady=true;showSaveStatus('공동 데이터 불러오기 완료 · 버전 '+cloudVersion,false);await window.lmCacheSnapshot(db,cloudVersion).catch(e=>lmLocalStatus('PC 자동저장 실패: '+e.message));const localView=await lmSyncMaterialize();for(const row of await lmSyncRows())if(!row.checkpointed&&['pending','conflict'].includes(row.status)&&row.operation.target!=='table')lmSyncEngine.apply(db,row.operation);lmSyncTail=lmSyncEngine.clone(db);lmAuditBaseline=lmAuditSnapshot();void lmSyncFlush();void window.lmEnsureOfflineArchives();if(cloudPoll){clearInterval(cloudPoll);cloudPoll=null;} /* v14.2: 자동 서버 읽기/화면 재생성 제거 */}
+async function loadCloud(){const pending=await lmSafeGet();if(pending){await lmSafeNotify();throw Error('PC에 미전송 자료가 있습니다. 복구 파일을 다운로드하고 충돌을 해결하기 전에는 서버 자료로 화면을 덮어쓰지 않습니다.')}const j=await cloudRPC('lm_cloud_read',{});if(!j||typeof j.version!=='number'||!j.data)throw Error('공동 데이터 읽기 응답이 올바르지 않습니다.');db={...empty(),...j.data};cloudVersion=j.version;cloudLastSaved=JSON.stringify(db);lmAuditBaseline=lmAuditSnapshot();cloudReady=true;showSaveStatus('공동 데이터 불러오기 완료 · 버전 '+cloudVersion,false);await window.lmCacheSnapshot(db,cloudVersion).catch(e=>lmLocalStatus('PC 자동저장 실패: '+e.message));for(const row of await lmSyncRows())if(!row.checkpointed&&['pending','conflict'].includes(row.status)&&row.operation.target!=='table')lmSyncEngine.apply(db,row.operation);lmSyncTail=lmSyncEngine.clone(db);lmAuditBaseline=lmAuditSnapshot();void lmSyncFlush();void window.lmEnsureOfflineArchives();if(cloudPoll){clearInterval(cloudPoll);cloudPoll=null;} /* v14.2: 자동 서버 읽기/화면 재생성 제거 */}
 async function lmManualSync(){const recovery=await lmSafeGet().catch(()=>({}));if(recovery){alert('PC에 미확인 저장 자료가 있습니다. 먼저 화면 아래의 복구 파일을 다운로드해 보관해 주세요. 데이터 손실 방지를 위해 수동 동기화를 차단합니다.');await lmSafeNotify();return;}const btn=document.getElementById('lmManualSync');if(!authToken||!cloudReady){alert('로그인 후 동기화할 수 있습니다.');return;}if(cloudBusy||cloudPending){alert('서버 저장 중입니다. 완료된 뒤 다시 눌러 주세요.');return;}const localChanges=JSON.stringify(db)!==cloudLastSaved;const hasDraft=lmFormDirty||lmActiveUnsavedForm()||!!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus');if(localChanges||hasDraft){alert('저장되지 않은 변경사항 또는 작성 중인 입력란이 있습니다. 자료 보호를 위해 동기화를 중단했습니다. 저장을 완료한 후 다시 시도해 주세요.');return;}if(!confirm('서버의 최신 공동자료를 불러오고 현재 화면을 갱신할까요?'))return;if(btn){btn.disabled=true;btn.textContent='동기화 중…';}try{await loadCloud();lmFormDirty=false;editing=null;close();render();showSaveStatus('수동 동기화 완료 · 서버 버전 '+cloudVersion,false);}catch(e){alert('동기화 실패: '+e.message);}finally{if(btn){btn.disabled=false;btn.textContent='↻ 동기화';}}}
 
 
@@ -2384,7 +2384,7 @@ function lmSetupOfflineUI(){
 /* Every saved revision is append-only in IndexedDB before any network write. */
 const lmSyncSandbox=new URL(location.href).searchParams.get('lm-sync-sandbox');
 const lmSyncEngine=window.LMSyncEngine,LM_SYNC_DB='landmaker-sync-journal-v1'+(lmSyncSandbox?'-sandbox-'+lmSyncSandbox:'');
-let lmSyncActor='',lmSyncTail=null,lmSyncSerial=Promise.resolve(),lmSyncBusy=false,lmSyncSaving=0,lmSyncTimer,lmSyncNextAttempt=0,lmSyncFailures=0,lmSyncLastArchiveRefresh=0;
+let lmSyncActor='',lmSyncTail=null,lmSyncSerial=Promise.resolve(),lmSyncBusy=false,lmSyncSaving=0,lmSyncTimer,lmSyncNextAttempt=0,lmSyncFailures=0,lmSyncLastArchiveRefresh=0,lmSyncLastPulledVersion=-1;
 window.lmOfflineEditing=false;
 function lmSyncDB(name=LM_SYNC_DB){return new Promise((resolve,reject)=>{const r=indexedDB.open(name,1);r.onupgradeneeded=()=>{r.result.createObjectStore('operations',{keyPath:'id'});r.result.createObjectStore('metadata')};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 async function lmSyncStore(mode,action,name=LM_SYNC_DB){const d=await lmSyncDB(name);try{return await new Promise((resolve,reject)=>{const tx=d.transaction(['operations','metadata'],mode);let result;const set=x=>result=x;action(tx.objectStore('operations'),tx.objectStore('metadata'),set);tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('PC 저장이 중단됐습니다.'))})}finally{d.close()}}
@@ -2455,6 +2455,7 @@ async function lmSyncFlush(){
 const lmArchiveNetwork=archiveAPI;
 async function lmSyncPull(){
  const latest=await cloudRPC('lm_cloud_read',{});if(!latest?.data||!Number.isFinite(latest.version))throw Error('최신 공동자료 조회 실패');
+ if(latest.version===lmSyncLastPulledVersion&&Date.now()-lmSyncLastArchiveRefresh<60000)return;
  const cached=await lmLocalRead();let archives=cached?.archives;
  if(!lmSyncSandbox&&archives?.completedAt&&Date.now()-lmSyncLastArchiveRefresh>60000){
   archives=lmSyncEngine.clone(archives);
@@ -2462,12 +2463,14 @@ async function lmSyncPull(){
   lmSyncLastArchiveRefresh=Date.now();
  }
  await window.lmCacheSnapshot(latest.data,latest.version,archives);
+ lmSyncLastPulledVersion=latest.version;if(lmSyncSandbox)lmSyncLastArchiveRefresh=Date.now();
  const pending=(await lmSyncRows()).some(x=>['pending','conflict'].includes(x.status));
  if(!lmSyncSaving&&!pending&&!lmFormDirty&&!window.lmPropertyDraftDirty&&!document.querySelector('#propertyForm,#customerForm')&&lmSyncEngine.equal(db,lmSyncTail)){
   db={...empty(),...latest.data};lmSyncTail=lmSyncEngine.clone(db);cloudVersion=latest.version;cloudLastSaved=JSON.stringify(db);lmAuditBaseline=lmAuditSnapshot();
  }
 }
 async function lmSyncStartEditing(){
+ if(lmFormDirty||window.lmPropertyDraftDirty)throw Error('작성 중인 입력을 먼저 저장해 주세요. 현재 입력내용은 그대로 유지합니다.');
  await lmSyncSerial.catch(()=>{});const snapshot=await lmSyncMaterialize();
  lmSyncActor=snapshot.staffId||lmSyncActor;if(!lmSyncActor)throw Error('온라인 직원 로그인으로 이 PC의 작업자를 먼저 확인해 주세요.');
  db={...empty(),...snapshot.data};lmSyncTail=lmSyncEngine.clone(db);cloudLastSaved=JSON.stringify(db);cloudVersion=snapshot.version;lmAuditBaseline=lmAuditSnapshot();
