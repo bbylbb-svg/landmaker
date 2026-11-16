@@ -1490,8 +1490,8 @@ function bindLandPrice(){const f=$('#propertyForm');if(!f)return;const price=f.q
 function lmAreaPyeong(sqm){return Number(sqm)>0?(Number(sqm)/3.305785).toLocaleString('ko-KR',{maximumFractionDigits:2}):''}
 function lmGrisUrl(pnu){return /^\d{19}$/.test(String(pnu||''))?'https://gris.gg.go.kr/map/main/grisMapView.do?mapCd=01&pnu='+pnu:''}
 function lmGrisQuery(parcel){
- if(parcel.landAddress?.trim())return parcel.landAddress.trim();
- const dong=String(parcel.dong||'').trim(),main=String(parcel.main||'').trim(),sub=String(parcel.sub||'').trim();
+ if(parcel.landAddress?.trim())return parcel.landAddress.trim().replace(/^0+(?=[가-힣])/,'');
+ const dong=String(parcel.dong||'').trim().replace(/^0+(?=[가-힣])/,''),main=String(parcel.main||'').trim(),sub=String(parcel.sub||'').trim();
  return dong&&/^\d{1,4}$/.test(main)&&(!sub||/^\d{1,4}$/.test(sub))?dong+' '+(parcel.san?'산 ':'')+main+(Number(sub)?'-'+sub:''):'';
 }
 function lmGrisCandidates(items,parcel){
@@ -1561,17 +1561,17 @@ function openPropertyEditModal(propertyId){
 function fastPropertyFormView(){
  if(window.lmPropertyDraftDirty && document.querySelector('#propertyForm'))return;
  const p=editing?.type==='property'?get('properties',editing.id):(window.lmCopiedPropertyDraft||{});window.lmCopiedPropertyDraft=null;
- const inlineMode=tab==='properties' && !p?.id && !!window.lmShowPropertyForm;
- // Keep the property list in place and open the editable property form in a centered modal.
+ const inlineMode=true;
+ // Property registration and editing always use the main content area.
  const previousFlag=window.lmShowPropertyForm;window.lmShowPropertyForm=false;
  if(!inlineMode&&!document.getElementById('fastRows')&&!document.getElementById('excelRows'))fastPropertiesView();
  window.lmShowPropertyForm=previousFlag;
- document.getElementById('lmPropertyModal')?.remove();
+ document.getElementById('lmPropertyModal')?.remove();document.getElementById('lmRecordPopup')?.remove();
  const modal=document.createElement('div');modal.id='lmPropertyModal';modal.className='lm-property-modal';
- modal.innerHTML='<section class="lm-property-dialog" role="dialog" aria-modal="true" aria-labelledby="lmPropertyTitle"><header class="lm-property-header"><h2 id="lmPropertyTitle">'+(p?.id?'매물 상세 · 수정':'새 매물 등록')+'</h2><div class="row">'+(p?.id?'<button type="button" class="danger" id="lmPropertyDelete">매물 삭제 (비밀번호 확인)</button>':'')+'<button type="button" class="alt" id="lmPropertyFull">전체화면</button><button type="button" class="alt" id="lmPropertyClose">✕ 닫기</button></div></header><div class="lm-property-scroll">'+propertyForm(p)+'</div></section>';
+ modal.innerHTML='<section class="lm-property-dialog" role="region" aria-labelledby="lmPropertyTitle"><header class="lm-property-header"><h2 id="lmPropertyTitle">'+(p?.id?'매물 상세 · 수정':'새 매물 등록')+'</h2><div class="row">'+(p?.id?'<button type="button" class="danger" id="lmPropertyDelete">매물 삭제 (비밀번호 확인)</button>':'')+'<button type="button" class="alt" id="lmPropertyFull">전체화면</button><button type="button" class="alt" id="lmPropertyClose">✕ 닫기</button></div></header><div class="lm-property-scroll">'+propertyForm(p)+'</div></section>';
  if(inlineMode){
    modal.className='lm-property-inline';
-   $('#view').innerHTML='<div class="panel"><h2>매물등록</h2><p class="muted">전체 화면에서 매물 정보를 입력합니다. 매물목록의 등록 버튼은 기존처럼 팝업으로 열립니다.</p><div id="lmInlinePropertyHost"></div></div>';
+   $('#view').innerHTML='<div class="panel"><div id="lmInlinePropertyHost"></div></div>';
    $('#lmInlinePropertyHost').appendChild(modal);
    const fullButton=modal.querySelector('#lmPropertyFull');if(fullButton)fullButton.remove();
    const closeButton=modal.querySelector('#lmPropertyClose');if(closeButton)closeButton.textContent='✕ 입력취소';
@@ -1648,7 +1648,7 @@ function lmExcelRawLocation(row){
  if(row.lmRegistered){const p=get('properties',row.id);if(p)return p}
  if(row.lmGroup){for(const p of db.properties||[]){const parcel=(p.parcels||[]).find(z=>lmGroupParcelKey(p.id,z)===row.parcelKey);if(parcel)return {title:p.title,parcels:[parcel]}}}
  const d=row.original_data||{},value=names=>{for(const key of names){if(d[key]!=null&&String(d[key]).trim())return String(d[key]).trim()}return ''};
- const address=value(['토지주소','토지소재지','지번주소','대지위치']),dong=value(['지역','행정동','법정동','읍면동']);
+ const address=value(['토지주소','토지소재지','지번주소','대지위치']),dong=value(['지역','행정동','법정동','읍면동']).replace(/^0+(?=[가-힣])/,'');
  let main=value(['번지','본번']),sub=value(['호','부번']);let san=/^(?:산|1|true|y|yes)$/i.test(value(['산','산여부']));
  if(/^산\s*/.test(main)){san=true;main=main.replace(/^산\s*/,'')}
  const compound=main.match(/^(\d{1,4})-(\d{1,4})$/);if(compound){if(sub&&Number(sub)!==Number(compound[2]))return {parcels:[]};main=compound[1];sub=compound[2]}
@@ -1787,8 +1787,8 @@ function rawRebuild(){if(!rawPanel.isConnected)return;const q=$('#lmRawQ').value
  function lmPropertyEditor(r){
  const isNew=!r||r.lmNew;
  const isAccess=!!r&&!r.lmNew;
- const target=lmShowRecordPopup(isNew?(r?'신규매물 · 수정':'신규매물 등록'):'Access 매물 · 상세');
- const propertyPopup=target.closest('#lmRecordPopup');if(propertyPopup){propertyPopup.dataset.propertyEditor='true';propertyPopup.dataset.saved='false';const closeBtn=propertyPopup.querySelector('#lmRecordClose');if(closeBtn){closeBtn.hidden=!isAccess;closeBtn.textContent='✕ 닫기';}}
+ const target=lmShowRecordPopup(isNew?(r?'신규매물 · 수정':'신규매물 등록'):'Access 매물 · 상세',true);
+ const propertyPopup=target.closest('#lmRecordPopup');if(propertyPopup){propertyPopup.dataset.propertyEditor='true';propertyPopup.dataset.saved='false';const closeBtn=propertyPopup.querySelector('#lmRecordClose');if(closeBtn){closeBtn.hidden=false;closeBtn.textContent='목록으로';}}
  const data=r?.original_data||{};
  const layout=[
  ['구분','처리','지역','산','번지','호','물건종류','보증금','임대료','매매가'],
@@ -2288,7 +2288,20 @@ async function renderAccessExcel(host, initialQuery=""){
 }
 
 /* v8.8: 엑셀형 목록에서 원노트 원본을 직접 검색. 서버 자료는 읽기 전용. */
-function lmShowRecordPopup(title){
+
+function lmShowInlinePropertyRecord(title){
+ document.getElementById('lmRecordPopup')?.remove();
+ const view=document.getElementById('view'),previous=[...view.children].map(el=>[el,el.hidden]);
+ previous.forEach(([el])=>el.hidden=true);
+ const host=document.createElement('section');host.id='lmRecordPopup';host.className='lm-record-inline panel';host.setAttribute('aria-label',title);
+ host.innerHTML='<div class="lm-record-head"><h2 id="lmRecordTitle"></h2><button type="button" class="alt" id="lmRecordClose">목록으로</button></div><div id="lmRecordContent"></div>';
+ host.querySelector('h2').textContent=title;view.append(host);
+ host.querySelector('#lmRecordClose').onclick=()=>{host.remove();previous.forEach(([el,hidden])=>{if(el.isConnected)el.hidden=hidden})};
+ return host.querySelector('#lmRecordContent');
+}
+
+function lmShowRecordPopup(title,inlineProperty=false){
+ if(inlineProperty)return lmShowInlinePropertyRecord(title);
  let old=document.getElementById('lmRecordPopup');if(old)old.remove();
  const overlay=document.createElement('div');overlay.id='lmRecordPopup';overlay.className='lm-record-overlay';
  overlay.innerHTML='<section class="lm-record-dialog" role="dialog" aria-modal="true" aria-labelledby="lmRecordTitle"><div class="lm-record-head"><h2 id="lmRecordTitle"></h2><div class="row"><button type="button" class="alt" id="lmRecordFull">전체화면</button><button type="button" class="alt" id="lmRecordClose">✕ 닫기</button></div></div><div id="lmRecordContent" class="lm-record-content"></div></section>';
@@ -3455,7 +3468,7 @@ if(new URL(location.href).searchParams.get('lm-building-auto-check')==='1'&&new 
  window.fetch=async(input,init)=>{if(!String(input).includes('functions/v1/landmaker-building'))throw Error('가상 검증 네트워크 차단');const q=JSON.parse(init.body),rows=q.type==='title'?[{mgmBldrgstPk:'FAKE-LEDGER',dongNm:'가상 API동',mainPurpsCdNm:'제조업소',archArea:'60',totArea:'100',useAprDay:'20250101'}]:q.type==='floor'?[{mgmBldrgstPk:'FAKE-LEDGER',flrGbCd:'10',flrNo:'1',flrNoNm:'1층',area:'60',mainPurpsCdNm:'제조업소'}]:[];return new Response(JSON.stringify({success:true,data:{items:{item:rows},totalCount:rows.length}}),{status:200})};
  db.properties[0].buildings=[{buildingName:'기존 입력 건물',floorSqm:'20',changeNotes:'보존할 기존 메모',violation:true}];openPropertyEditModal('OWNER-TEST');
 }
-</script></body></html>
+</script><style>.lm-record-inline{position:static;max-width:100%;width:100%;background:#fff}.lm-record-inline>.lm-record-head{position:static;padding:0 0 12px}.lm-record-inline .lm-access-original{overflow:visible}.lm-record-inline .lm-acc-top{top:0}.lm-record-inline .lm-record-head h2{margin:0}</style></body></html>
 
 <style id="lm-calendar-readable-v2">
 #view .calendar .day{font-size:17px!important;padding:9px!important;min-height:135px!important}
