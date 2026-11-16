@@ -3786,7 +3786,7 @@ function lmMandateOwners(f,target){
   if(!o.name)return;
   if(kind==='land'&&target?.parcel&&o.scopeMode==='selected'&&!o.scope.includes(target.parcel))return;
   const key=o.personCode&&o.personCode!=='__NEW__'?o.personCode:'@'+kind+':'+i;
-  const label=o.name+' · '+(kind==='land'?'토지':'건물')+(o.scope?.length?' ('+o.scope.join(', ')+')':'');
+  const label=o.name+(o.personCode&&o.personCode!=='__NEW__'?' · '+o.personCode:'')+(o.phone?' · '+o.phone:'')+' · '+(kind==='land'?'토지':'건물')+(o.scope?.length?' ('+o.scope.join(', ')+')':'');
   if(map.has(key))map.get(key).label+=' / '+(kind==='land'?'토지':'건물');else map.set(key,{value:key,label,name:o.name,phone:o.phone||''});
  });
  return [...map.values()];
@@ -3795,6 +3795,7 @@ function lmRefreshMandateLinks(f){
  if(!f)return;
  const targets=lmMandateTargets(f);
  lmBindPersonSearch(f);
+ lmBindRelatedOwnerSearch(f);
  for(const row of f.querySelectorAll('.lm-mandate-row')){
   const scope=row.querySelector('[data-m=scope]'),owner=row.querySelector('[data-m=ownerCode]');if(!scope||!owner)continue;
   const oldScope=scope.value||scope.dataset.saved||'',oldOwner=owner.value||owner.dataset.saved||'';
@@ -3805,7 +3806,7 @@ function lmRefreshMandateLinks(f){
   let selected=oldOwner;
   if(!selected&&options.length===1)selected=options[0].value;
   owner.innerHTML='<option value="">'+(options.length?'소유주 선택':'먼저 이 매물의 소유주를 입력하세요')+'</option>'+options.map(o=>'<option value="'+esc(o.value)+'">'+esc(o.label)+'</option>').join('')+(selected&&!options.some(o=>o.value===selected)?'<option value="'+esc(selected)+'">'+esc(selected)+' · 기존 연결(대상 확인 필요)</option>':'');
-  owner.value=selected;owner.dataset.saved='';const chosen=options.find(o=>o.value===selected);const both=row.querySelector('[data-link-both-wrap]');if(both)both.hidden=!chosen||options.filter(o=>o.name===chosen.name).length<2;
+  owner.value=selected;owner.dataset.saved='';owner._lmFilterOwners?.();const chosen=options.find(o=>o.value===selected);const both=row.querySelector('[data-link-both-wrap]');if(both)both.hidden=!chosen||options.filter(o=>o.name===chosen.name).length<2;
   const help=row.querySelector('[data-mandate-link-status]');if(help)help.textContent='현재 매물 → '+(scope.value||'필지 입력 필요')+' → '+(chosen?(row.querySelector('[data-link-both]')?.checked?options.filter(o=>o.name===chosen.name).map(o=>o.label).join(' / '):chosen.label):'소유주 확인 필요');
  }
 }
@@ -3818,6 +3819,15 @@ function lmResolveMandateOwnerCode(code,o){
  return owner.personCode;
 }
 
+
+function lmBindRelatedOwnerSearch(f){
+ for(const sel of f.querySelectorAll('select[data-m=ownerCode]')){
+  if(sel._lmOwnerSearchBound)continue;sel._lmOwnerSearchBound=true;
+  const input=document.createElement('input');input.type='search';input.placeholder='관련 소유주 이름 · 전화번호 · 인물코드 검색';input.setAttribute('aria-label','관련 소유주 통합인물코드 검색');input.dataset.lmPersonSearch='1';sel.before(input);
+  sel._lmFilterOwners=()=>{for(const option of sel.options)option.hidden=!!option.value&&!lmPersonSearchMatches({code:option.value,names:[option.textContent],phones:[]},input.value)};
+  input.addEventListener('input',e=>{e.stopPropagation();sel._lmFilterOwners()});
+ }
+}
 
 function lmPersonSearchMatches(p,q){
  const normal=v=>String(v||'').toLowerCase().replace(/[\s()-]/g,'');
