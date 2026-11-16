@@ -1572,7 +1572,7 @@ function fastPropertyFormView(){
  if(inlineMode){
    modal.className='lm-property-inline';
    $('#view').innerHTML='<div class="panel"><div id="lmInlinePropertyHost"></div></div>';
-   $('#lmInlinePropertyHost').appendChild(modal);
+   $('#lmInlinePropertyHost').appendChild(modal);const pageScroll=document.querySelector('main');if(pageScroll){pageScroll.scrollLeft=0;pageScroll.scrollTop=0}
    const fullButton=modal.querySelector('#lmPropertyFull');if(fullButton)fullButton.remove();
    const closeButton=modal.querySelector('#lmPropertyClose');if(closeButton)closeButton.textContent='✕ 입력취소';
  }else document.body.appendChild(modal);
@@ -2295,7 +2295,7 @@ function lmShowInlinePropertyRecord(title){
  previous.forEach(([el])=>el.hidden=true);
  const host=document.createElement('section');host.id='lmRecordPopup';host.className='lm-record-inline panel';host.setAttribute('aria-label',title);
  host.innerHTML='<div class="lm-record-head"><h2 id="lmRecordTitle"></h2><button type="button" class="alt" id="lmRecordClose">목록으로</button></div><div id="lmRecordContent"></div>';
- host.querySelector('h2').textContent=title;view.append(host);
+ host.querySelector('h2').textContent=title;view.append(host);const pageScroll=view.closest('main');if(pageScroll){pageScroll.scrollLeft=0;pageScroll.scrollTop=0}
  host.querySelector('#lmRecordClose').onclick=()=>{host.remove();previous.forEach(([el,hidden])=>{if(el.isConnected)el.hidden=hidden})};
  return host.querySelector('#lmRecordContent');
 }
