@@ -3438,7 +3438,8 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
    if(landHeading&&parcelLookup)landHeading.before(parcelLookup);
    if(buildingHeading&&buildingLookup)buildingHeading.before(buildingLookup);
    let selected=null,records=[],floorRecords=[],lotRecords=[],sewageRecords=[],floorWarning='',requestId=0;
-   const message=msg=>{if(form.isConnected&&$('lmBldStatus'))$('lmBldStatus').textContent=msg};
+   const message=msg=>{if(form.isConnected&&$('lmBldStatus'))$('lmBldStatus').textContent='[층 입력 점검 11/16] '+msg};
+   message('조회 후 입력 결과와 오류를 이곳에 표시합니다.');
    const lookup=async(type,address)=>{
     const rows=[];let previous='';
     for(let pageNo=1;pageNo<=100;pageNo++){
@@ -3506,6 +3507,8 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
    };
    $('lmBldApply').onclick=()=>{
     if(!form.isConnected||!records.length||!selected)return;
+    try{
+    message('층별 입력 처리 중…');
     const area=$('buildingFields');if(!area){message('건물 입력칸을 찾지 못했습니다.');return}
     const blank=row=>!parseBuildings({querySelectorAll:()=>[row]}).length;
     // Imported records have stable ledger IDs. Never overwrite a manually entered building.
@@ -3558,8 +3561,9 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
     }
     const last=area.lastElementChild;last?.querySelector('[name=buildingName]')?.dispatchEvent(new Event('input',{bubbles:true}));
     if(added){last?.scrollIntoView?.({block:'nearest'});last?.querySelector('[name=buildingName]')?.focus({preventScroll:true})}
-    if(!added&&!floorsAdded&&skipped){message('조회한 '+skipped+'개 동은 이미 입력되어 있습니다. 기존 동을 유지했습니다. 다른 건물은 주소를 다시 선택해 조회하세요.');return}
-    message(added+'개 동·층별 '+floorsAdded+'건 입력, 기존 대장 동 '+skipped+'개 유지. '+(excluded?excluded+'개 동은 조회된 층을 모두 입력하고 연면적은 표제부 값을 유지했습니다. ':'')+(floorWarning?floorWarning+' · ':'')+'저장 전 동별 면적·거래대상을 확인하세요. 토지정보는 토지대장 버튼으로 입력하세요.');
+    if(!added&&!floorsAdded&&skipped){message('조회한 '+skipped+'개 동이 기존 입력과 일치합니다. 층별 조회 '+floorRecords.length+'건 / 해당 건물 입력 '+plan.reduce((n,item)=>n+(item.row?.querySelectorAll('.lm-floor-row').length||0),0)+'행. 기존 입력을 유지했습니다.');return}
+    message('층별 조회 '+floorRecords.length+'건 / 전체 입력 '+area.querySelectorAll('.lm-floor-row').length+'행 · '+added+'개 동·층별 '+floorsAdded+'건 입력, 기존 대장 동 '+skipped+'개 유지. '+(excluded?excluded+'개 동은 조회된 층을 모두 입력하고 연면적은 표제부 값을 유지했습니다. ':'')+(floorWarning?floorWarning+' · ':'')+'저장 전 동별 면적·거래대상을 확인하세요. 토지정보는 토지대장 버튼으로 입력하세요.');
+    }catch(error){console.error('Building ledger apply failed',error);message('입력 중단: '+String(error?.message||error)+' · 기존 입력은 지우지 말아 주세요.')}
    };
    form.dataset.lmBldBound='1';
  }
