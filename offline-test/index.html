@@ -1137,7 +1137,7 @@ function openCustomer(k){
  <p>${esc(c.phone)} · ${esc(c.staff)} · 공동 ${esc((c.coStaff||[]).join(', '))}</p>
  <p><b>소개자 / 소개경로:</b> ${esc(c.referrer)||'미입력'}</p>
  <p>${esc(c.category)} · 면적 ${esc(c.area)} · 금액 ${esc(c.budget)} · 입주 ${esc(c.moveIn)} · 차량 ${esc(c.vehicle)} · 업종 ${esc(c.industry)}</p>
- ${c.personCode?`<p><button type="button" class="alt" onclick="lmOpenOwnerByCode('${esc(c.personCode)}')">현재·과거 소유 및 변경이력</button></p>`:''}<h3>상세내용</h3><div class="rich-read">${c.noteRich?cleanRichHtml(c.noteRich):esc(c.note)}</div>
+ ${c.personCode?`<p><button type="button" class="alt" data-owner-person-code="${esc(c.personCode)}" onclick="lmOpenOwnerByCode(this.dataset.ownerPersonCode)">현재·과거 소유 및 변경이력</button></p>`:''}<h3>상세내용</h3><div class="rich-read">${c.noteRich?cleanRichHtml(c.noteRich):esc(c.note)}</div>
  <div class="contact-title"><h3>회사 관계자 · 담당자 목록</h3><button type="button" id="addCustomerContact">+ 관계자 추가</button></div>
  <p class="muted">대표·직원 등 여러 명을 등록하고 상담 상대방을 선택할 수 있습니다.</p>
  <div id="customerContactList">${contacts.map(p=>`<div class="customer-contact-card"><b>${esc(p.name)}</b> ${p.role?`<span class="contact-chip">${esc(p.role)}</span>`:''} <span>${esc(p.phone)}</span> ${p.memo?`<p>${esc(p.memo)}</p>`:''}<div class="consult-actions"><button type="button" class="alt" data-contact-edit="${esc(p.id)}">수정</button><button type="button" class="danger" data-contact-delete="${esc(p.id)}">삭제</button></div></div>`).join('')||'<p class="muted">등록된 관계자가 없습니다.</p>'}</div>
@@ -1284,7 +1284,7 @@ function lmOwnerScopeOptions(f,kind){return kind==='land'?parseParcels(f).map(z=
 function lmStageOwnerChange(before,after,kind,date,reason,target){
  if(!before?.name||!after?.name)throw Error('이전·새 소유주명을 입력하세요.');
  if(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date))throw Error('변경일을 정확히 입력하거나 비워 두세요.');
- const previous=JSON.parse(JSON.stringify(before)),next=JSON.parse(JSON.stringify(after));
+ if(String(after.share||'').trim()!==String(before.share||'').trim())throw Error('선택한 소유주의 지분 전체를 이전합니다. 새 소유주 지분을 기존 지분과 같게 입력하세요.');const previous=JSON.parse(JSON.stringify(before)),next=JSON.parse(JSON.stringify(after));
  if(!previous.personCode||previous.personCode==='__NEW__')previous.personCode=newPersonCode();
  if(!next.personCode||next.personCode==='__NEW__')next.personCode=newPersonCode();
  if(previous.personCode===next.personCode)throw Error('같은 인물코드입니다. 오타 수정은 기존 입력란에서 정정하세요.');
@@ -1332,7 +1332,7 @@ lmOwnerDirectory=function(){
  return result;
 };
 function lmOpenOwnerTimeline(o){
- const host=lmShowRecordPopup('소유주 · 현재/과거 소유 및 변경이력');host.innerHTML='<h2>'+esc(o.name)+'</h2><p>'+esc(o.code)+' · '+esc(o.phone)+'</p><h3>현재 소유</h3>'+([...o.currentProperties.values()].map(p=>'<p>'+esc(p.title)+' <button type="button" class="alt" data-owner-open="'+esc(p.id)+'">매물 열기</button></p>').join('')||'<p>현재 연결된 소유 없음</p>')+'<h3>과거 소유 · 변경이력</h3>'+o.history.map(h=>'<h4>'+esc(h.property.title)+'</h4>'+lmOwnerHistoryHtml([h.event])).join('');
+ const host=lmShowRecordPopup('소유주 · 현재/과거 소유 및 변경이력');host.innerHTML='<h2>'+esc(o.name)+'</h2><p>'+esc(o.code)+' · '+esc(o.phone)+'</p><h3>현재 소유</h3>'+([...o.currentProperties.values()].map(p=>'<p>'+esc(p.title)+' · '+esc([...(p.landOwners||[]),...(p.buildingOwners||[])].filter(x=>x.personCode===o.code).map(x=>x.scope?.join(', ')||'전체 대상').join(' / '))+' <button type="button" class="alt" data-owner-open="'+esc(p.id)+'">매물 열기</button></p>').join('')||'<p>현재 연결된 소유 없음</p>')+'<h3>과거 소유 · 변경이력</h3>'+o.history.map(h=>'<h4>'+esc(h.property.title)+'</h4>'+lmOwnerHistoryHtml([h.event])).join('');
  const customerIds=new Set(db.customers.filter(c=>c.personCode&&c.personCode===o.code).map(c=>c.id));const records=db.records.filter(r=>customerIds.has(r.customerId)||r.personCode===o.code);
  host.innerHTML+='<h3>인물코드로 연결된 상담</h3>'+(records.map(r=>'<p>'+esc(r.date)+' · '+esc(r.content)+'</p>').join('')||'<p>연결된 상담 없음</p>');host.querySelectorAll('[data-owner-open]').forEach(b=>b.onclick=()=>openPropertyEditModal(b.dataset.ownerOpen));
 }
