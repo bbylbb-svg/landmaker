@@ -3518,9 +3518,29 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
      for(const [field,val] of [['dong',selected.dong],['main',selected.bun],['sub',selected.ji==='0'?'':selected.ji]])setInput(parcel.querySelector('[name='+field+']'),val);
      const san=parcel.querySelector('[name=san]');if(san){san.checked=selected.platGbCd==='1';san.dispatchEvent(new Event('change',{bubbles:true}))}
     }
+    // Merge missing floor rows without replacing user-entered lease terms or areas.
+    const mergeFloors=(row,floors)=>{
+     const host=row.querySelector('.lm-floor-rows');
+     const current=[...host.querySelectorAll('.lm-floor-row')];
+     const clean=v=>String(v||'').replace(/\s+/g,'');
+     const existing=current.map(el=>({el,name:clean(el.querySelector('[name=levelName]').value),use:clean(el.querySelector('[name=levelUse]').value),used:false}));
+     const missing=[];
+     for(const z of floors){
+      const level={levelName:floorName(z),levelUse:value(z,['etcPurps','mainPurpsCdNm']),sqm:value(z,['area'])};
+      const match=existing.find(x=>!x.used&&x.name===clean(level.levelName)&&x.use===clean(level.levelUse));
+      if(match){match.used=true;continue}
+      missing.push(level);
+     }
+     if(missing.length){
+      for(const el of current){const filled=[...el.querySelectorAll('input,select,textarea')].some(x=>x.type==='checkbox'?x.checked:String(x.value||'').trim());if(!filled)el.remove()}
+      host.insertAdjacentHTML('beforeend',missing.map(floorRow).join(''));
+      row.querySelector('[name=buildingName]').dispatchEvent(new Event('input',{bubbles:true}));
+     }
+     return missing.length;
+    };
     let added=0,skipped=0,floorsAdded=0,excluded=0;
     for(const item of plan){
-     if(item.row){skipped++;continue}
+     if(item.row){skipped++;floorsAdded+=mergeFloors(item.row,floorsFor(item.record));continue}
      const record=item.record;let row=[...area.querySelectorAll('.buildingrow')].find(blank);
      if(!row){area.insertAdjacentHTML('beforeend',buildingRow());row=area.lastElementChild;lmSyncBuildingViolation(row)}
      if(!row)throw Error('건물 입력칸을 만들지 못했습니다. 기존 입력은 유지됩니다.');
@@ -3532,21 +3552,13 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
      const titleTotal=Number(value(record,['totArea']));
      const complete=floors.length&&floors.every(z=>value(z,['area'])!==''&&Number.isFinite(Number(z.area))&&Number(z.area)>=0)&&Math.abs(floors.reduce((n,z)=>n+Number(z.area),0)-titleTotal)<0.05;
      setInput(row.querySelector('[name=floorAreaIncomplete]'),floors.length&&!complete?'1':'0');
-     if(floors.length){
-      for(let i=0;i<floors.length;i++){
-       if(i)row.querySelector('.lm-floor-rows').insertAdjacentHTML('beforeend',floorRow());
-       const target=[...row.querySelectorAll('.lm-floor-row')].at(-1),z=floors[i];
-       setInput(target.querySelector('[name=levelName]'),floorName(z));
-       setInput(target.querySelector('[name=levelUse]'),value(z,['etcPurps','mainPurpsCdNm']));
-       setInput(target.querySelector('[name=levelSqm]'),value(z,['area']));floorsAdded++;
-      }
-     }
+     if(floors.length)floorsAdded+=mergeFloors(row,floors);
      if(floors.length&&!complete)excluded++;
      added++;
     }
     const last=area.lastElementChild;last?.querySelector('[name=buildingName]')?.dispatchEvent(new Event('input',{bubbles:true}));
     if(added){last?.scrollIntoView?.({block:'nearest'});last?.querySelector('[name=buildingName]')?.focus({preventScroll:true})}
-    if(!added&&skipped){message('조회한 '+skipped+'개 동은 이미 입력되어 있습니다. 기존 동을 유지했습니다. 다른 건물은 주소를 다시 선택해 조회하세요.');return}
+    if(!added&&!floorsAdded&&skipped){message('조회한 '+skipped+'개 동은 이미 입력되어 있습니다. 기존 동을 유지했습니다. 다른 건물은 주소를 다시 선택해 조회하세요.');return}
     message(added+'개 동·층별 '+floorsAdded+'건 입력, 기존 대장 동 '+skipped+'개 유지. '+(excluded?excluded+'개 동은 조회된 층을 모두 입력하고 연면적은 표제부 값을 유지했습니다. ':'')+(floorWarning?floorWarning+' · ':'')+'저장 전 동별 면적·거래대상을 확인하세요. 토지정보는 토지대장 버튼으로 입력하세요.');
    };
    form.dataset.lmBldBound='1';
