@@ -1655,6 +1655,13 @@ function lmExcelRawLocation(row){
  return {title:value(['매물명','물건명']),parcels:[{pnu,landAddress:address,dong,main,sub,san}]};
 }
 
+
+function lmExpandFloorLeaseRow(r,p,mode){
+ if(!p||mode==='sale'||!(p.buildings||[]).some(b=>b.perFloorLease))return [r];
+ const offers=(p.buildings||[]).flatMap((b,bi)=>b.perFloorLease?(b.levels||[]).filter(l=>l.forLease&&(mode!=='lease'||!l.leaseStatus||l.leaseStatus==='진행중')).map((l,li)=>({...r,lmFloorLease:true,lmFloorKey:bi+':'+li,original_data:{...r.original_data,'건물동':b.buildingName||'건물 '+(bi+1),'층':l.levelName||'층 미지정','건평':l.sqm!==''&&l.sqm!=null&&Number.isFinite(Number(l.sqm))?String(Math.round(Number(l.sqm)/3.305785*100)/100):'','보증금':l.deposit??'','임대료':l.rent??'','물건종류':l.levelUse||b.buildingUse||'','처리':l.leaseStatus||p.leaseStatus||'','내용':l.dealNote||p.note||p.title||''}})):[]);
+ return offers;
+}
+
 function propertyListView(listMode='all'){
  const cols=[['dong','행정동'],['lot','대표지번'],['title','매물명'],['lots','필지수'],['land','토지(평)'],['building','건물(평)'],['buildingUse','건물종류'],['landUse','토지지목'],['septic','정화조/하수'],['sale','매매가(만원)'],['unit','평당가(만원)'],['deposit','보증금(만원)'],['rent','월세(만원)'],['type','거래유형'],['owner','소유주/고객'],['staff','담당자'],['saleStatus','매매상태'],['leaseStatus','임대상태'],['confirmed','확인일']];
  let sortKey='lot',descending=false,visible=[],sheetPage=0;const sheetPageSize=100;
@@ -1670,7 +1677,8 @@ function propertyListView(listMode='all'){
  const rawBatch=1000,rawChunk=100;
  let lmPropertyEdits=new Map(),lmPropertyEditsReady=false;
  const lmMergeProperty=r=>r.lmNew?r:({...r,original_data:{...r.original_data,...(lmPropertyEdits.get(r.id)||{})}});
- const lmLocalPropertyRows=()=>db.properties.map((p,i)=>{const land=p.parcels?.[0]||{},building=p.buildings?.[0]||{},owner=p.landOwners?.[0]||{};return {id:p.id,source_table:'전체매물등록',source_row_number:p.id, lmRegistered:true,original_data:{'구분':p.type||'','처리':p.saleStatus||p.leaseStatus||'','지역':land.dong||p.dong||'','산':land.san?'산':'','번지':land.main||p.main||'','호':land.sub||p.sub||'','물건종류':p.buildingType||building.buildingUse||building.type||'','건평':p.buildingPyeong||building.floorPyeong||(building.floorSqm?String(Math.round(Number(building.floorSqm)/3.305785*100)/100):''),'대지평':p.landPyeong||land.pyeong||(land.sqm?String(Math.round(Number(land.sqm)/3.305785*100)/100):''),'지주이름':owner.name||p.ownerName||'','지주휴대폰':owner.phone||p.ownerPhone||'','내용':p.note||p.title||'','매매가':p.salePrice||'','보증금':p.deposit||'','임대료':p.rent||'','동력':p.electricity||'','호이스트':p.hoist||'','차량':p.vehicle||'','앞사람':p.staff||'','입력일자':p.createdAt?.slice(0,10)||'','일련번호':p.id,'매물명':p.title||''}}});
+ const lmLocalPropertyBaseRows=()=>db.properties.map((p,i)=>{const land=p.parcels?.[0]||{},building=p.buildings?.[0]||{},owner=p.landOwners?.[0]||{};return {id:p.id,source_table:'전체매물등록',source_row_number:p.id, lmRegistered:true,original_data:{'구분':p.type||'','처리':p.saleStatus||p.leaseStatus||'','지역':land.dong||p.dong||'','산':land.san?'산':'','번지':land.main||p.main||'','호':land.sub||p.sub||'','물건종류':p.buildingType||building.buildingUse||building.type||'','건평':p.buildingPyeong||building.floorPyeong||(building.floorSqm?String(Math.round(Number(building.floorSqm)/3.305785*100)/100):''),'대지평':p.landPyeong||land.pyeong||(land.sqm?String(Math.round(Number(land.sqm)/3.305785*100)/100):''),'지주이름':owner.name||p.ownerName||'','지주휴대폰':owner.phone||p.ownerPhone||'','내용':p.note||p.title||'','매매가':p.salePrice||'','보증금':p.deposit||'','임대료':p.rent||'','동력':p.electricity||'','호이스트':p.hoist||'','차량':p.vehicle||'','앞사람':p.staff||'','입력일자':p.createdAt?.slice(0,10)||'','일련번호':p.id,'매물명':p.title||''}}});
+ const lmLocalPropertyRows=()=>lmLocalPropertyBaseRows().flatMap(r=>lmExpandFloorLeaseRow(r,get('properties',r.id),listMode));
  // v14.4: 묶음 매물은 개별 필지를 복제하지 않고 별도 거래 행으로 조회합니다.
  const lmGroupPropertyRows=()=>{const parcelMap=new Map(lmGroupParcels().map(z=>[z.key,z]));return (db.propertyGroups||[]).flatMap(g=>(g.parcelKeys||[]).map(k=>{const z=parcelMap.get(k);if(!z)return null;const d=g.parcelStates?.[k]||{};const sale=g.parcelStates?d.saleStatus||'':g.saleStatus||'';const lease=g.parcelStates?d.leaseStatus||'':g.leaseStatus||'';return {id:g.id+'|'+k,groupId:g.id,parcelKey:k,lmGroup:true,source_table:'묶음매물',source_row_number:g.no,original_data:{'구분':sale&&lease?'매매·임대':sale?'매매':lease?'임대':'','처리':sale==='진행중'||lease==='진행중'?'진행중':sale||lease||'','지역':z.label.split(' ')[0]||'','번지':z.label.split(' ')[1]||'','매물명':z.label,'내용':(g.note||'')+' / 보유묶음 '+g.no+' / '+(g.parcelKeys||[]).map(key=>parcelMap.get(key)?.label||'').join(', '),'지주이름':z.owner,'매매가':g.parcelStates?d.salePrice||'':g.salePrice||'','보증금':g.parcelStates?d.deposit||'':g.deposit||'','임대료':g.parcelStates?d.rent||'':g.rent||'','일련번호':g.no,'연결필지':z.label}}}).filter(Boolean))};
  const lmCombinedProperties=()=>[...lmPropertyMemory.rows.map(lmMergeProperty),...lmNewPropertyCache.map(x=>({id:x.id,source_table:'신규매물',source_row_number:x.serial_no,original_data:x.original_data||{},lmNew:true})),...lmLocalPropertyRows(),...lmGroupPropertyRows()].filter(r=>!r.original_data?.__lm_deleted);
@@ -1690,7 +1698,7 @@ function propertyListView(listMode='all'){
  };
 function lmPropertyRegionLabel(value){return typeof value==='string'?value.replace(/^(\s*)0+(?=[가-힣])/,'$1'):value}
  const rawValue=(r,k)=>{
-  if(r.lmRegistered&&['보증금','임대료'].includes(k)){const p=get('properties',r.id);const offers=(p?.buildings||[]).flatMap((b,i)=>b.perFloorLease?(b.levels||[]).filter(l=>l.forLease&&(listMode!=='lease'||l.leaseStatus==='진행중'||!l.leaseStatus)).map(l=>({label:(b.buildingName||'건물'+(i+1))+' '+(l.levelName||'층 미지정'),value:k==='보증금'?l.deposit:l.rent})):[]);if(offers.length)return offers.map(o=>o.label+': '+(o.value!==''&&o.value!=null?o.value:'미입력')).join('\n');}
+  if(r.lmFloorLease&&['건물동','층','건평','보증금','임대료','물건종류','처리','내용'].includes(k))return r.original_data[k]??'';
 
   if(k==='원본구분')return r.source_table;
   if(k==='원본번호')return r.source_row_number;
@@ -1729,7 +1737,7 @@ function lmPropertyRegionLabel(value){return typeof value==='string'?value.repla
  };
  const rawText=v=>v===null||v===undefined?'':typeof v==='object'?JSON.stringify(v):String(v);
  const rawFieldOrder=['구분','처리','지역','산','번지','호','물건종류','건평','대지평','지주이름','내용','지주휴대폰','지주연락처','보증금','임대료','매매가','체크','세입자이름','세입자휴대폰','세입자내용','일련번호'];
- function rawColumns(){const grouped=['건평','대지평','매매가','보증금','임대료'];const fields=rawFields.filter(k=>!grouped.includes(k));const first=rawFields.findIndex(k=>grouped.includes(k));const at=first>=0?rawFields.slice(0,first).filter(k=>!grouped.includes(k)).length:Math.max(0,fields.indexOf('물건종류')+1);fields.splice(at,0,...grouped);return ['__lm_location__','원본구분',...fields,'원본번호']}
+ function rawColumns(){const grouped=['건평','대지평','매매가','보증금','임대료'];const fields=rawFields.filter(k=>!grouped.includes(k));const first=rawFields.findIndex(k=>grouped.includes(k));const at=first>=0?rawFields.slice(0,first).filter(k=>!grouped.includes(k)).length:Math.max(0,fields.indexOf('물건종류')+1);fields.splice(at,0,...grouped);if(rawRows.some(r=>r.lmFloorLease)){const pos=Math.max(0,fields.indexOf('건평'));for(const key of ['건물동','층'])if(!fields.includes(key))fields.splice(pos,0,key)}return ['__lm_location__','원본구분',...fields,'원본번호']}
  function rawHead(){if(!rawPanel.isConnected)return;const cols=rawColumns();$('#lmRawHead').innerHTML='<tr>'+cols.map(k=>k==='__lm_location__'?'<th>위치</th>':`<th data-property-col="${esc(k)}"><div class="lm-raw-th"><span title="${esc(k)}">${esc(k)}</span><button type="button" class="lm-raw-filter-button ${rawFilter[k]?.size?'lm-raw-active':''}" data-filter-key="${esc(k)}" title="${esc(k)} 필터·정렬">▼</button></div></th>`).join('')+'</tr>';$('#lmRawHead').querySelectorAll('[data-filter-key]').forEach(btn=>btn.onclick=e=>{e.stopPropagation();rawOpenFilter(btn.dataset.filterKey,btn)});lmEnablePropertyColumns(rawPanel.querySelector('.lm-raw-table'),cols)}
 
  function lmIsProgressProperty(r,mode){
