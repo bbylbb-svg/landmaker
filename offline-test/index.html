@@ -3448,7 +3448,14 @@ main:has(#propertyForm),.lm-property-scroll:has(#propertyForm){scroll-padding-to
 .lm-raw-table td:is([data-property-col="건평"],[data-property-col="대지평"],[data-property-col="매매가"],[data-property-col="보증금"],[data-property-col="임대료"]){font-variant-numeric:tabular-nums}
 .lm-raw-table tbody tr:hover td[data-property-col="건평"],.lm-raw-table tbody tr:hover td[data-property-col="대지평"]{background:#dfefda!important}
 .lm-raw-table tbody tr:hover td[data-property-col="매매가"],.lm-raw-table tbody tr:hover td[data-property-col="보증금"],.lm-raw-table tbody tr:hover td[data-property-col="임대료"]{background:#f9e8c5!important}
-</style></body></html>
+</style><script>
+if(new URL(location.href).searchParams.get('lm-building-auto-check')==='1'&&new URL(location.href).searchParams.get('lm-owner-history-check')==='1'){
+ ensureFreshAuth=async()=>{};
+ window.lmOpenPostcode=async callback=>callback({jibunAddress:'경기도 검증시 검증동 1',bcode:'4139010100',userSelectedType:'J'});
+ window.fetch=async(input,init)=>{if(!String(input).includes('functions/v1/landmaker-building'))throw Error('가상 검증 네트워크 차단');const q=JSON.parse(init.body),rows=q.type==='title'?[{mgmBldrgstPk:'FAKE-LEDGER',dongNm:'가상 API동',mainPurpsCdNm:'제조업소',archArea:'60',totArea:'100',useAprDay:'20250101'}]:q.type==='floor'?[{mgmBldrgstPk:'FAKE-LEDGER',flrGbCd:'10',flrNo:'1',flrNoNm:'1층',area:'60',mainPurpsCdNm:'제조업소'}]:[];return new Response(JSON.stringify({success:true,data:{items:{item:rows},totalCount:rows.length}}),{status:200})};
+ db.properties[0].buildings=[{buildingName:'기존 입력 건물',floorSqm:'20',changeNotes:'보존할 기존 메모',violation:true}];openPropertyEditModal('OWNER-TEST');
+}
+</script></body></html>
 
 <style id="lm-calendar-readable-v2">
 #view .calendar .day{font-size:17px!important;padding:9px!important;min-height:135px!important}
