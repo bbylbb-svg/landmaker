@@ -1688,10 +1688,12 @@ function propertyListView(listMode='all'){
   if(values.some(v=>!Number.isFinite(v)||v<=0))return null;
   return String(Math.round(values.reduce((a,b)=>a+b,0)/3.305785*100)/100);
  };
+function lmPropertyRegionLabel(value){return typeof value==='string'?value.replace(/^(\s*)0+(?=[가-힣])/,'$1'):value}
  const rawValue=(r,k)=>{
   if(k==='원본구분')return r.source_table;
   if(k==='원본번호')return r.source_row_number;
   const d=r.original_data||{};
+  if(k==='지역')return lmPropertyRegionLabel(d[k]??'');
   if(k==='건평'&&r.lmRegistered&&(listMode==='lease'||listMode==='sale')){
    const property=get('properties',r.id);
    const selectedPyeong=lmAreaByTransaction(property,listMode);

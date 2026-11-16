@@ -1690,10 +1690,12 @@ function propertyListView(listMode='all'){
   if(values.some(v=>!Number.isFinite(v)||v<=0))return null;
   return String(Math.round(values.reduce((a,b)=>a+b,0)/3.305785*100)/100);
  };
+function lmPropertyRegionLabel(value){return typeof value==='string'?value.replace(/^(\s*)0+(?=[가-힣])/,'$1'):value}
  const rawValue=(r,k)=>{
   if(k==='원본구분')return r.source_table;
   if(k==='원본번호')return r.source_row_number;
   const d=r.original_data||{};
+  if(k==='지역')return lmPropertyRegionLabel(d[k]??'');
   if(k==='건평'&&r.lmRegistered&&(listMode==='lease'||listMode==='sale')){
    const property=get('properties',r.id);
    const selectedPyeong=lmAreaByTransaction(property,listMode);
@@ -3364,7 +3366,7 @@ if(new URL(location.href).searchParams.get('lm-excel-location-check')==='1'){
  document.getElementById('authGate').hidden=true;db=empty();db.properties=[{id:'EXCEL-MULTI',title:'가상 여러 필지 매물',parcels:[{dong:'검증동',main:'1',landAddress:'경기도 검증시 검증동 1',pnu:'4139010100100010000'},{dong:'검증동',main:'2',landAddress:'경기도 검증시 검증동 2',pnu:'4139010100100020000'}]}];
  const rows=[{id:'EXCEL-ACCESS',source_table:'기본자료',source_row_number:1,original_data:{'구분':'매매','지역':'검증동','산':'산','번지':'44-2','호':'','물건종류':'토지','대지평':'100','내용':'가상 원본 · 위치·열너비 검증'}},{id:'EXCEL-ACCESS-2',source_table:'기본자료1',source_row_number:2,original_data:{'구분':'임대','지역':'검증동','번지':'55','호':'3','내용':'행 클릭과 위치 버튼 분리 검증'}}];
  const newRows=[{id:'EXCEL-NEW',serial_no:3,original_data:{'구분':'임대','지역':'가상동','번지':'123','호':'4','내용':'가상 신규매물'}}];
- lmPropertyMemory.rows=rows;lmPropertyMemory.fields=['구분','지역','산','번지','호','물건종류','대지평','내용'];lmPropertyMemory.finished=true;lmPropertyMemory.promise=null;lmNewPropertyCache=newRows;
+ if(new URL(location.href).searchParams.get('lm-excel-region-check')==='1')rows[0].original_data['지역']='0검증동';lmPropertyMemory.rows=rows;lmPropertyMemory.fields=['구분','지역','산','번지','호','물건종류','대지평','내용'];lmPropertyMemory.finished=true;lmPropertyMemory.promise=null;lmNewPropertyCache=newRows;
  archiveAPI=async(table,params={},method='GET')=>{if(method!=='GET')throw Error('가상 검증 화면에서는 저장하지 않습니다.');return table==='lm_import_rows'?rows:table==='lm_new_properties'?newRows:[]};ensureFreshAuth=async()=>{};authToken='FIXTURE-NON-CREDENTIAL';
  const original=window.fetch;window.fetch=async(input,init)=>String(input).includes('functions/v1/landmaker-land')?new Response(JSON.stringify({success:true,items:[{pnu:'4139010100200440002',address:'경기도 검증시 검증동 산 44-2'}]}),{status:200}):original(input,init);
  tab='propertyList';nav();propertyListView();
