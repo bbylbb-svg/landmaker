@@ -3500,14 +3500,14 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
      $('lmBldPreview').textContent=JSON.stringify(records.map(r=>({동명:buildingName(r),주용도:value(r,['mainPurpsCdNm']),건축면적:value(r,['archArea']),연면적:value(r,['totArea']),사용승인일:value(r,['useAprDay']),관련지번:relatedLots(r),주차옥내:parking(r,['indrAutoUtcnt','indrMechUtcnt']),주차옥외:parking(r,['oudrAutoUtcnt','oudrMechUtcnt']),하수처리시설:sewageFields(r),층별정보:floorsFor(r).map(z=>({층:floorName(z),용도:value(z,['etcPurps','mainPurpsCdNm']),면적:value(z,['area'])}))})),null,2);
      $('lmBldApply').disabled=!records.length;
      message(records.length?records.length+'개 동 · 층별 '+floorRecords.length+'건 · 관련지번 '+lotRecords.length+'건 · 하수처리시설 '+sewageRecords.length+'건 조회. '+(floorWarning||'동별로 구분하여 입력합니다.')+(unmatched+unmatchedExtra?' 동 구분 불확실 '+(unmatched+unmatchedExtra)+'건은 자동입력하지 않습니다.':''):'조회된 건축물대장이 없습니다.');
-     if(records.length)$('lmBldApply').click();
+     // Apply only on the explicit button press so the lookup result remains reviewable.
     }catch(e){records=[];floorRecords=[];message('조회 실패: '+e.message)}
     finally{if(form.isConnected&&ticket===requestId){btn.disabled=false;$('lmBldAddress').disabled=false}}
    };
    $('lmBldApply').onclick=()=>{
     if(!form.isConnected||!records.length||!selected)return;
     const area=$('buildingFields');if(!area){message('건물 입력칸을 찾지 못했습니다.');return}
-    const blank=row=>![...row.querySelectorAll('input')].some(e=>e.type==='checkbox'?e.checked:e.value.trim());
+    const blank=row=>!parseBuildings({querySelectorAll:()=>[row]}).length;
     // Imported records have stable ledger IDs. Never overwrite a manually entered building.
     const plan=records.map(record=>({record,row:buildingKey(record)?[...area.querySelectorAll('.buildingrow')].find(r=>r.querySelector('[name=ledgerKey]')?.value===buildingKey(record)):null}));
     const existing=[...area.querySelectorAll('.buildingrow')].some(r=>!blank(r));
@@ -3522,8 +3522,8 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
     for(const item of plan){
      if(item.row){skipped++;continue}
      const record=item.record;let row=[...area.querySelectorAll('.buildingrow')].find(blank);
-     if(!row){$('addBuilding').click();row=[...area.querySelectorAll('.buildingrow')].at(-1)}
-     if(!row)continue;
+     if(!row){area.insertAdjacentHTML('beforeend',buildingRow());row=area.lastElementChild;lmSyncBuildingViolation(row)}
+     if(!row)throw Error('건물 입력칸을 만들지 못했습니다. 기존 입력은 유지됩니다.');
      for(const [field,val] of [['ledgerKey',buildingKey(record)],['buildingName',buildingName(record)],['buildingUse',value(record,['mainPurpsCdNm'])],['footprintSqm',value(record,['archArea'])],['legacyFloorSqm',value(record,['totArea'])],['approvalDate',value(record,['useAprDay']).replace(/^(\d{4})(\d{2})(\d{2})$/,'$1-$2-$3')]])setInput(row.querySelector('[name='+field+']'),val);
      const sewage=sewageFields(record);
      for(const [field,val] of [['relatedLots',relatedLots(record)],['indoorParking',parking(record,['indrAutoUtcnt','indrMechUtcnt'])],['outdoorParking',parking(record,['oudrAutoUtcnt','oudrMechUtcnt'])],['sewageFacility',sewage.facility],['sewageType',sewage.type],['sewageCapacity',sewage.capacity]])setInput(row.querySelector('[name='+field+']'),val);
@@ -3534,7 +3534,7 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
      setInput(row.querySelector('[name=floorAreaIncomplete]'),floors.length&&!complete?'1':'0');
      if(floors.length){
       for(let i=0;i<floors.length;i++){
-       if(i)row.querySelector('.addFloor').click();
+       if(i)row.querySelector('.lm-floor-rows').insertAdjacentHTML('beforeend',floorRow());
        const target=[...row.querySelectorAll('.lm-floor-row')].at(-1),z=floors[i];
        setInput(target.querySelector('[name=levelName]'),floorName(z));
        setInput(target.querySelector('[name=levelUse]'),value(z,['etcPurps','mainPurpsCdNm']));
@@ -3544,6 +3544,9 @@ window.lmOpenPostcode=async function(oncomplete,isCurrent=()=>true){
      if(floors.length&&!complete)excluded++;
      added++;
     }
+    const last=area.lastElementChild;last?.querySelector('[name=buildingName]')?.dispatchEvent(new Event('input',{bubbles:true}));
+    if(added){last?.scrollIntoView?.({block:'nearest'});last?.querySelector('[name=buildingName]')?.focus({preventScroll:true})}
+    if(!added&&skipped){message('조회한 '+skipped+'개 동은 이미 입력되어 있습니다. 기존 동을 유지했습니다. 다른 건물은 주소를 다시 선택해 조회하세요.');return}
     message(added+'개 동·층별 '+floorsAdded+'건 입력, 기존 대장 동 '+skipped+'개 유지. '+(excluded?excluded+'개 동은 조회된 층을 모두 입력하고 연면적은 표제부 값을 유지했습니다. ':'')+(floorWarning?floorWarning+' · ':'')+'저장 전 동별 면적·거래대상을 확인하세요. 토지정보는 토지대장 버튼으로 입력하세요.');
    };
    form.dataset.lmBldBound='1';
