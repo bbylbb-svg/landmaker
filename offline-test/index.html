@@ -3756,8 +3756,53 @@ function lmAccessAddressMatch(d,p){
  const region=norm(d.지역),dong=norm(p.dong);
  return !!region&&!!dong&&(region===dong||region.endsWith(dong)||dong.endsWith(region))&&num(d.번지)===num(p.main)&&num(d.호||'0')===num(p.sub||'0')&&(/^(1|true|산|y)$/i.test(String(d.산||'')))===!!p.san;
 }
+
+
+function lmMandateOwnerLabel(p,code){return [...new Set([...(p.landOwners||[]),...(p.buildingOwners||[])].filter(o=>o.personCode===code).map(o=>o.name).filter(Boolean))].join(', ')||code||'미연결'}
+
+function lmMandateTargets(f){
+ const parcels=parseParcels(f).map(formatLot).filter(Boolean);
+ return parcels.length===1?[{value:parcels[0],label:parcels[0],parcel:parcels[0]}]:[{value:'전체 매물 · '+parcels.join(', '),label:'전체 필지 · '+parcels.join(', '),parcel:''},...parcels.map(value=>({value,label:value,parcel:value}))];
+}
+function lmMandateOwners(f,target){
+ const land=parseOwners(f,'land'),building=parseOwners(f,'building'),map=new Map();
+ for(const [kind,owners] of [['land',land],['building',building]])owners.forEach((o,i)=>{
+  if(!o.name)return;
+  if(kind==='land'&&target?.parcel&&o.scopeMode==='selected'&&!o.scope.includes(target.parcel))return;
+  const key=o.personCode&&o.personCode!=='__NEW__'?o.personCode:'@'+kind+':'+i;
+  const label=o.name+' · '+(kind==='land'?'토지':'건물')+(o.scope?.length?' ('+o.scope.join(', ')+')':'');
+  if(map.has(key))map.get(key).label+=' / '+(kind==='land'?'토지':'건물');else map.set(key,{value:key,label,name:o.name,phone:o.phone||''});
+ });
+ return [...map.values()];
+}
+function lmRefreshMandateLinks(f){
+ if(!f)return;
+ const targets=lmMandateTargets(f);
+ for(const row of f.querySelectorAll('.lm-mandate-row')){
+  const scope=row.querySelector('[data-m=scope]'),owner=row.querySelector('[data-m=ownerCode]');if(!scope||!owner)continue;
+  const oldScope=scope.value||scope.dataset.saved||'',oldOwner=owner.value||owner.dataset.saved||'';
+  let value=oldScope||targets[0]?.value||'';
+  scope.innerHTML=targets.map(t=>'<option value="'+esc(t.value)+'">'+esc(t.label)+'</option>').join('')+(oldScope&&!targets.some(t=>t.value===oldScope)?'<option value="'+esc(oldScope)+'">'+esc(oldScope)+' · 기존 대상(확인 필요)</option>':'');
+  scope.value=value;scope.dataset.saved='';
+  const options=lmMandateOwners(f,targets.find(t=>t.value===scope.value));
+  let selected=oldOwner;
+  if(!selected&&options.length===1)selected=options[0].value;
+  owner.innerHTML='<option value="">'+(options.length?'소유주 선택':'먼저 이 매물의 소유주를 입력하세요')+'</option>'+options.map(o=>'<option value="'+esc(o.value)+'">'+esc(o.label)+'</option>').join('')+(selected&&!options.some(o=>o.value===selected)?'<option value="'+esc(selected)+'">'+esc(selected)+' · 기존 연결(대상 확인 필요)</option>':'');
+  owner.value=selected;owner.dataset.saved='';
+  const help=row.querySelector('[data-mandate-link-status]');if(help)help.textContent='현재 매물 → '+(scope.value||'필지 입력 필요')+' → '+(options.find(o=>o.value===selected)?.label||'소유주 확인 필요');
+ }
+}
+function lmResolveMandateOwnerCode(code,o){
+ const match=/^@(land|building):(\d+)$/.exec(code||'');
+ if(!match)return code||'';
+ const owner=(match[1]==='land'?o.landOwners:o.buildingOwners)?.[Number(match[2])];
+ if(!owner)throw Error('의뢰인의 관련 소유주를 다시 선택하세요.');
+ if(!owner.personCode||owner.personCode==='__NEW__')owner.personCode=newPersonCode();
+ return owner.personCode;
+}
+
 function lmMandateRow(x={}){
- return '<div class="lm-mandate-row" style="border:1px solid #cbd8df;padding:12px;margin:8px 0"><div class="grid"><label>의뢰인 이름<input data-m="name" value="'+esc(x.name||'')+'"></label><label>연락처<input data-m="phone" value="'+esc(x.phone||'')+'"></label><label>통합 인물코드<select data-m="personCode"><option value="">새 인물 (저장 시 발급)</option>'+peopleIndex().map(p=>'<option value="'+esc(p.code)+'" '+(p.code===x.personCode?'selected':'')+'>'+esc([...p.names].join('/')+' · '+[...p.phones].join('/')+' · '+p.code)+'</option>').join('')+(x.personCode&&!peopleIndex().some(p=>p.code===x.personCode)?'<option selected value="'+esc(x.personCode)+'">'+esc(x.personCode)+'</option>':'')+'</select></label><label>관련 소유주 인물코드<input data-m="ownerCode" value="'+esc(x.ownerCode||'')+'" placeholder="소유주 입력란의 코드"></label><label>소유주와 관계<input data-m="relationship" value="'+esc(x.relationship||'')+'" placeholder="예: 아들, 배우자, 대리인"></label><label>의뢰 대상<input data-m="scope" value="'+esc(x.scope||'')+'" placeholder="예: 과림동 737-4 2층 임대"></label><label>상태<select data-m="status">'+['진행중','종료'].map(s=>'<option '+(s===(x.status||'진행중')?'selected':'')+'>'+s+'</option>').join('')+'</select></label></div><label>연락·의뢰 메모<textarea data-m="note" rows="2">'+esc(x.note||'')+'</textarea></label><button type="button" class="alt" data-remove-mandate>이 연결 삭제</button></div>';
+ return '<div class="lm-mandate-row" style="border:1px solid #cbd8df;padding:12px;margin:8px 0"><div class="grid"><label>의뢰인 이름<input data-m="name" value="'+esc(x.name||'')+'"></label><label>연락처<input data-m="phone" value="'+esc(x.phone||'')+'"></label><label>통합 인물코드<select data-m="personCode"><option value="">새 인물 (저장 시 발급)</option>'+peopleIndex().map(p=>'<option value="'+esc(p.code)+'" '+(p.code===x.personCode?'selected':'')+'>'+esc([...p.names].join('/')+' · '+[...p.phones].join('/')+' · '+p.code)+'</option>').join('')+(x.personCode&&!peopleIndex().some(p=>p.code===x.personCode)?'<option selected value="'+esc(x.personCode)+'">'+esc(x.personCode)+'</option>':'')+'</select></label><label>관련 소유주<select data-m="ownerCode" data-saved="'+esc(x.ownerCode||'')+'"><option value="'+esc(x.ownerCode||'')+'">'+esc(x.ownerCode||'소유주 선택')+'</option></select></label><label>소유주와 관계<input data-m="relationship" value="'+esc(x.relationship||'')+'" placeholder="예: 아들, 배우자, 대리인"></label><label>의뢰 대상 필지<select data-m="scope" data-saved="'+esc(x.scope||'')+'"><option value="'+esc(x.scope||'')+'">'+esc(x.scope||'현재 매물')+'</option></select></label><label>상태<select data-m="status">'+['진행중','종료'].map(s=>'<option '+(s===(x.status||'진행중')?'selected':'')+'>'+s+'</option>').join('')+'</select></label></div><p class="muted" data-mandate-link-status></p><label>연락·의뢰 메모<textarea data-m="note" rows="2">'+esc(x.note||'')+'</textarea></label><button type="button" class="alt" data-remove-mandate>이 연결 삭제</button></div>';
 }
 function lmReadMandates(f){return [...f.querySelectorAll('.lm-mandate-row')].map(r=>Object.fromEntries([...r.querySelectorAll('[data-m]')].map(e=>[e.dataset.m,e.value.trim()]))).filter(x=>x.name||x.phone||x.personCode||x.note)}
 function lmBindAccessAndMandates(f){
@@ -3782,9 +3827,10 @@ function lmBindAccessAndMandates(f){
    host.querySelectorAll('[data-import-access]').forEach(b=>b.onclick=()=>{const r=candidates[Number(b.dataset.importAccess)],a=JSON.parse(field.value);if(a.some(x=>x.id===r.id)){status.textContent='이미 불러온 기록입니다.';return}a.push({...r,importedAt:new Date().toISOString()});field.value=JSON.stringify(a);field.dispatchEvent(new Event('input',{bubbles:true}));draw();b.disabled=true;b.textContent='불러옴'});
   }catch(e){status.textContent='조회 실패: '+e.message}
  };
- const contacts=document.createElement('section');contacts.id='lmPropertyMandates';contacts.innerHTML='<h3>매물 의뢰인 · 가족 / 대리인</h3><p class="muted">소유권과 별도 기록입니다. 동일인은 통합 인물코드를 선택해 연결하세요. 이름만으로 합치지 않습니다. 관계 입력은 법적 대리권 확인을 대신하지 않습니다.</p><div data-mandate-rows>'+(p.mandates||[]).map(lmMandateRow).join('')+'</div><button type="button" class="alt" data-add-mandate>의뢰인 추가</button>';
- f.append(contacts);contacts.querySelectorAll('[data-m]').forEach(e=>e.name='mandate_'+e.dataset.m);contacts.querySelector('[data-add-mandate]').onclick=()=>{contacts.querySelector('[data-mandate-rows]').insertAdjacentHTML('beforeend',lmMandateRow());contacts.querySelectorAll('[data-m]').forEach(e=>e.name='mandate_'+e.dataset.m);contacts.dispatchEvent(new Event('input',{bubbles:true}))};
+ const contacts=document.createElement('section');contacts.id='lmPropertyMandates';contacts.innerHTML='<h3>매물 의뢰인 · 가족 / 대리인</h3><p class="muted">현재 매물의 필지와 소유주에 연결됩니다. 대상이 하나면 자동 선택하며, 여러 명이면 관련 소유주를 선택하세요. 동일인은 통합 인물코드를 선택해 연결하세요. 이름만으로 합치지 않습니다. 관계 입력은 법적 대리권 확인을 대신하지 않습니다.</p><div data-mandate-rows>'+(p.mandates||[]).map(lmMandateRow).join('')+'</div><button type="button" class="alt" data-add-mandate>의뢰인 추가</button>';
+ f.append(contacts);contacts.querySelectorAll('[data-m]').forEach(e=>e.name='mandate_'+e.dataset.m);contacts.querySelector('[data-add-mandate]').onclick=()=>{contacts.querySelector('[data-mandate-rows]').insertAdjacentHTML('beforeend',lmMandateRow());contacts.querySelectorAll('[data-m]').forEach(e=>e.name='mandate_'+e.dataset.m);lmRefreshMandateLinks(f);contacts.dispatchEvent(new Event('input',{bubbles:true}))};
  contacts.addEventListener('click',e=>{if(e.target.matches('[data-remove-mandate]')){e.target.closest('.lm-mandate-row').remove();contacts.dispatchEvent(new Event('input',{bubbles:true}))}});
+ lmRefreshMandateLinks(f);f.addEventListener('input',e=>{if(e.target.closest('.parcelrow,.ownerrow'))lmRefreshMandateLinks(f)});f.addEventListener('change',e=>{if(e.target.closest('.parcelrow,.ownerrow')||e.target.matches('[data-m=scope]'))lmRefreshMandateLinks(f)});const linkObserver=new MutationObserver(()=>{if(!f.isConnected){linkObserver.disconnect();return}lmRefreshMandateLinks(f)});for(const area of f.querySelectorAll('#parcelFields,#landOwnerFields,#buildingOwnerFields'))linkObserver.observe(area,{childList:true});
  contacts.addEventListener('change',e=>{if(e.target.dataset.m!=='personCode'||!e.target.value)return;const person=peopleIndex().find(p=>p.code===e.target.value),r=e.target.closest('.lm-mandate-row');if(person){r.querySelector('[data-m=name]').value=[...person.names][0]||'';r.querySelector('[data-m=phone]').value=[...person.phones][0]||''}});
 }
 const lmBindOwnersWithMandates=bindOwners;
@@ -3794,7 +3840,7 @@ lmPrepareOwnerSave=function(f,o,prev){
  lmSaveOwnersWithMandates(f,o,prev);
  o.accessSources=JSON.parse(f.querySelector('[name=lmAccessSourcesDraft]')?.value||JSON.stringify(prev?.accessSources||[]));delete o.lmAccessSourcesDraft;
  o.mandates=f.querySelector('#lmPropertyMandates')?lmReadMandates(f):(prev?.mandates||[]);
- for(const x of o.mandates){if(!x.name)throw Error('의뢰인 이름을 입력하세요.');if(!x.personCode)x.personCode=newPersonCode();}
+ for(const x of o.mandates){if(!x.name)throw Error('의뢰인 이름을 입력하세요.');if(!x.personCode)x.personCode=newPersonCode();x.ownerCode=lmResolveMandateOwnerCode(x.ownerCode,o);}
  o.mandateHistory=[...(prev?.mandateHistory||[])];
  if(prev&&JSON.stringify(prev.mandates||[])!==JSON.stringify(o.mandates))o.mandateHistory.push({id:id(),at:new Date().toISOString(),before:prev.mandates||[],after:o.mandates});
 };
@@ -3803,15 +3849,19 @@ peopleIndex=function(){const a=lmPeopleBeforeMandates();for(const p of db.proper
 const lmDirectoryBeforeMandates=lmOwnerDirectory;
 lmOwnerDirectory=function(){const a=lmDirectoryBeforeMandates();for(const p of db.properties)for(const m of p.mandates||[]){let x=a.find(x=>x.code&&x.code===m.personCode);if(!x){x={name:m.name,code:m.personCode,phone:m.phone,address:'',properties:new Map(),currentProperties:new Map(),shares:new Set(),history:[]};a.push(x)}x.properties.set(p.id,p)}return a};
 const lmTimelineBeforeMandates=lmOpenOwnerTimeline;
-lmOpenOwnerTimeline=function(o){lmTimelineBeforeMandates(o);const host=document.querySelector('#lmRecordContent');if(!host)return;const rows=db.properties.flatMap(p=>(p.mandates||[]).filter(m=>m.personCode===o.code).map(m=>({p,m})));const box=document.createElement('section');box.innerHTML='<h3>가족 / 대리 의뢰한 매물</h3>'+(rows.map(({p,m},i)=>'<p>'+esc(p.title)+' · '+esc(m.scope||'대상 미기재')+' · '+esc(m.relationship||'관계 미기재')+' · '+esc(m.status||'진행중')+' · 관련 소유주 '+esc(m.ownerCode||'미연결')+' <button type="button" class="alt" data-mandate-open="'+i+'">매물 열기</button></p>').join('')||'<p>연결된 의뢰 없음</p>');host.append(box);box.querySelectorAll('[data-mandate-open]').forEach(b=>b.onclick=()=>openPropertyEditModal(rows[Number(b.dataset.mandateOpen)].p.id))};
+lmOpenOwnerTimeline=function(o){lmTimelineBeforeMandates(o);const host=document.querySelector('#lmRecordContent');if(!host)return;const rows=db.properties.flatMap(p=>(p.mandates||[]).filter(m=>m.personCode===o.code).map(m=>({p,m})));const box=document.createElement('section');box.innerHTML='<h3>가족 / 대리 의뢰한 매물</h3>'+(rows.map(({p,m},i)=>'<p>'+esc(p.title)+' · '+esc(m.scope||'대상 미기재')+' · '+esc(m.relationship||'관계 미기재')+' · '+esc(m.status||'진행중')+' · 관련 소유주 '+esc(lmMandateOwnerLabel(p,m.ownerCode))+' <button type="button" class="alt" data-mandate-open="'+i+'">매물 열기</button></p>').join('')||'<p>연결된 의뢰 없음</p>');const related=db.properties.flatMap(p=>(p.mandates||[]).filter(m=>m.ownerCode===o.code).map(m=>({p,m})));if(related.length){const family=document.createElement('section');family.innerHTML='<h3>이 소유주의 가족 / 대리 의뢰인</h3>'+related.map(({p,m},i)=>'<p>'+esc(m.name)+' · '+esc(m.relationship||'관계 미기재')+' · '+esc(m.phone||'')+' · '+esc(m.scope||p.title)+' <button type="button" class="alt" data-family-open="'+i+'">매물 열기</button></p>').join('');host.append(family);family.querySelectorAll('[data-family-open]').forEach(b=>b.onclick=()=>openPropertyEditModal(related[Number(b.dataset.familyOpen)].p.id))}host.append(box);box.querySelectorAll('[data-mandate-open]').forEach(b=>b.onclick=()=>openPropertyEditModal(rows[Number(b.dataset.mandateOpen)].p.id))};
 
 const lmCaptureBeforeMandates=lmCapturePropertyDraft;
 lmCapturePropertyDraft=function(){lmCaptureBeforeMandates();const f=document.querySelector('#propertyForm');if(!f||!window.lmPropertyDraftDirty)return;try{const d=JSON.parse(localStorage.getItem(LM_PROPERTY_DRAFT_KEY)||'null');if(d){d.mandates=lmReadMandates(f);d.accessSources=JSON.parse(f.querySelector('[name=lmAccessSourcesDraft]')?.value||'[]');localStorage.setItem(LM_PROPERTY_DRAFT_KEY,JSON.stringify(d))}}catch(e){console.warn('의뢰인 임시저장 실패',e)}};
 const lmRestoreBeforeMandates=lmRestorePropertyDraft;
-lmRestorePropertyDraft=function(){const wasDirty=window.lmPropertyDraftDirty;lmRestoreBeforeMandates();if(wasDirty||!window.lmPropertyDraftDirty)return;try{const d=JSON.parse(localStorage.getItem(LM_PROPERTY_DRAFT_KEY)||'null'),f=document.querySelector('#propertyForm');if(!f||!d)return;if(Array.isArray(d.mandates)){const area=f.querySelector('[data-mandate-rows]');if(area){area.innerHTML=d.mandates.map(lmMandateRow).join('');area.querySelectorAll('[data-m]').forEach(e=>e.name='mandate_'+e.dataset.m)}}if(Array.isArray(d.accessSources)){f.querySelector('[name=lmAccessSourcesDraft]').value=JSON.stringify(d.accessSources);f.querySelector('#lmAccessImport').dispatchEvent(new Event('lm-access-redraw'))}}catch(e){console.warn('의뢰인 임시자료 복원 실패',e)}};
+lmRestorePropertyDraft=function(){const wasDirty=window.lmPropertyDraftDirty;lmRestoreBeforeMandates();if(wasDirty||!window.lmPropertyDraftDirty)return;try{const d=JSON.parse(localStorage.getItem(LM_PROPERTY_DRAFT_KEY)||'null'),f=document.querySelector('#propertyForm');if(!f||!d)return;if(Array.isArray(d.mandates)){const area=f.querySelector('[data-mandate-rows]');if(area){area.innerHTML=d.mandates.map(lmMandateRow).join('');area.querySelectorAll('[data-m]').forEach(e=>e.name='mandate_'+e.dataset.m);lmRefreshMandateLinks(f)}}if(Array.isArray(d.accessSources)){f.querySelector('[name=lmAccessSourcesDraft]').value=JSON.stringify(d.accessSources);f.querySelector('#lmAccessImport').dispatchEvent(new Event('lm-access-redraw'))}}catch(e){console.warn('의뢰인 임시자료 복원 실패',e)}};
 lmBindAccessAndMandates(document.querySelector('#propertyForm'));
 </script><script>
 if(new URLSearchParams(location.search).has('lm-floor-list-check')){
  const p=db.properties[0];p.leaseStatus='진행중';p.buildings=[{buildingName:'가상건물',perFloorLease:true,levels:[{levelName:'지하 1층',sqm:'350',forLease:true,deposit:'6300',rent:'630',leaseStatus:'진행중'},{levelName:'1층',sqm:'284.8',forLease:true,deposit:'4300',rent:'430',leaseStatus:'진행중'},{levelName:'2층',sqm:'53.31',forLease:false},{levelName:'3층',sqm:'100',forLease:true,leaseStatus:'완료',deposit:'100',rent:'10'}]}];lmPropertyMemory.rows=[];lmPropertyMemory.finished=true;lmPropertyMemory.fields=['구분','처리','지역','번지','호','물건종류','건평','대지평','보증금','임대료','내용'];lmNewPropertyCache=[];propertyListView('lease');
+}
+</script><script>
+if(new URLSearchParams(location.search).has('lm-mandate-link-check')){
+ const p=db.properties[0];p.parcels=[{dong:'가상검증동',main:'360',sub:'137',sqm:'100'}];p.landOwners=[{name:'가상 소유주',personCode:'P-TEST-OWNER',scopeMode:'all',scope:[]}];p.buildingOwners=[{name:'가상 소유주',personCode:'P-TEST-OWNER',scopeMode:'all',scope:[]}];p.mandates=[];window.lmPropertyDraftDirty=false;editing={type:'property',id:p.id};fastPropertyFormView();
 }
 </script>
