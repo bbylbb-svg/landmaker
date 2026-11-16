@@ -3388,7 +3388,15 @@ body.lm-column-resizing,body.lm-column-resizing *{cursor:col-resize!important;us
  document.getElementById('authGate').hidden=true;window.fetch=async()=>{throw Error('검증 화면 네트워크 저장 차단')};cloudRPC=async()=>{throw Error('검증 화면 공동 서버 저장 차단')};archiveAPI=async()=>[];queueCloudSave=()=>{window.lmOwnerFixtureSaved=JSON.parse(JSON.stringify(db));showSaveStatus('가상 검증자료 저장 완료',false)};authToken='FIXTURE-NON-CREDENTIAL';cloudReady=true;
  db=empty();db.properties=[{id:'OWNER-TEST',title:'가상 소유주 변경 검증',saleStatus:'진행중',parcels:[{dong:'검증동',main:'1',sqm:'100'},{dong:'검증동',main:'2',sqm:'200'}],landOwners:[{name:'가상 이전주',personCode:'P-OLD',share:'1/2',note:'이전 메모 보존'},{name:'가상 공동주',personCode:'P-OTHER',share:'1/2'}],buildingOwners:[{name:'가상 건물주',personCode:'P-BUILDING',share:'전체'}]}];tab='properties';nav();openPropertyEditModal('OWNER-TEST');
 }
-</script></body></html>
+</script><style id="lm-property-savebar-pinned-v2">
+/* The inline form must use the page scroller, not an unbounded inner scroller. */
+#lmPropertyModal.lm-property-inline .lm-property-scroll{overflow:visible!important;overflow-y:visible!important;overflow-x:visible!important}
+#propertyForm>.lm-property-savebar{position:sticky!important;top:0;z-index:30;background:#fff;margin:0 0 12px;padding:7px 8px;min-height:48px;display:flex;flex-wrap:nowrap;gap:8px;align-items:center;border:1px solid #d5e3e6;border-radius:8px;box-shadow:0 2px 5px #153b4a12;max-width:100%;overflow-x:auto}
+#propertyForm>.lm-property-savebar>button{flex:0 0 auto;margin:0;white-space:nowrap;padding:8px 12px}
+main:has(#propertyForm),.lm-property-scroll:has(#propertyForm){scroll-padding-top:72px;scroll-padding-bottom:20px}
+#propertyForm :is(input,textarea,select,[contenteditable="true"]){scroll-margin-top:72px;scroll-margin-bottom:20px}
+@media(max-width:767px){#lmPropertyModal.lm-property-inline #propertyForm>.lm-property-savebar{top:67px}#propertyForm>.lm-property-savebar{gap:6px}#propertyForm>.lm-property-savebar>button{font-size:13px;padding:8px 10px}}
+</style></body></html>
 
 <style id="lm-calendar-readable-v2">
 #view .calendar .day{font-size:17px!important;padding:9px!important;min-height:135px!important}

@@ -3128,7 +3128,15 @@ body.lm-column-resizing,body.lm-column-resizing *{cursor:col-resize!important;us
 .lm-raw-table th:first-child,.lm-raw-table td.lm-raw-location{position:sticky;left:0;background:#fff;z-index:2}.lm-raw-table th:first-child{top:0;background:#e7eff5;z-index:5}
 .lm-raw-table tbody tr:hover td.lm-raw-location{background:#eaf6f6}.lm-raw-location button{padding:5px 8px;font-size:12px}
 </style>
-<style>.lm-raw-th{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:5px!important;min-height:44px;padding-right:4px}.lm-raw-th>span{display:block;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lm-raw-th>.lm-raw-filter-button{position:static!important;flex:none;align-self:flex-start;margin:0!important}.lm-raw-table thead th{vertical-align:top}</style></body></html>
+<style>.lm-raw-th{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:5px!important;min-height:44px;padding-right:4px}.lm-raw-th>span{display:block;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lm-raw-th>.lm-raw-filter-button{position:static!important;flex:none;align-self:flex-start;margin:0!important}.lm-raw-table thead th{vertical-align:top}</style><style id="lm-property-savebar-pinned-v2">
+/* The inline form must use the page scroller, not an unbounded inner scroller. */
+#lmPropertyModal.lm-property-inline .lm-property-scroll{overflow:visible!important;overflow-y:visible!important;overflow-x:visible!important}
+#propertyForm>.lm-property-savebar{position:sticky!important;top:0;z-index:30;background:#fff;margin:0 0 12px;padding:7px 8px;min-height:48px;display:flex;flex-wrap:nowrap;gap:8px;align-items:center;border:1px solid #d5e3e6;border-radius:8px;box-shadow:0 2px 5px #153b4a12;max-width:100%;overflow-x:auto}
+#propertyForm>.lm-property-savebar>button{flex:0 0 auto;margin:0;white-space:nowrap;padding:8px 12px}
+main:has(#propertyForm),.lm-property-scroll:has(#propertyForm){scroll-padding-top:72px;scroll-padding-bottom:20px}
+#propertyForm :is(input,textarea,select,[contenteditable="true"]){scroll-margin-top:72px;scroll-margin-bottom:20px}
+@media(max-width:767px){#lmPropertyModal.lm-property-inline #propertyForm>.lm-property-savebar{top:67px}#propertyForm>.lm-property-savebar{gap:6px}#propertyForm>.lm-property-savebar>button{font-size:13px;padding:8px 10px}}
+</style></body></html>
 
 <style id="lm-calendar-readable-v2">
 #view .calendar .day{font-size:17px!important;padding:9px!important;min-height:135px!important}
