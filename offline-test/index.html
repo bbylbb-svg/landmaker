@@ -1248,7 +1248,7 @@ function lmBuildingViolationState(text){
   if(dates.length===1){const [,y,m,d]=dates[0],date=new Date(Date.UTC(+y,+m-1,+d));currentDate=date.getUTCFullYear()===+y&&date.getUTCMonth()===+m-1&&date.getUTCDate()===+d?+y*10000+(+m)*100+(+d):null}
   const t=line.replace(/\s+/g,'');
   if(!/위반건축물|위반표시|위반사항|위반내용|무단증축|불법증축|무허가/.test(t))continue;
-  const uncertain=/과거|이력|여부|의심|추정|확인필요|예정|신청|문의|미해제|해제취소/.test(t)||dates.length>1;
+  const uncertain=/과거|이력|여부|의심|추정|확인필요|예정|신청|요청|접수|검토|문의|미해제|해제취소|해제불가|해제보류|미완료|안됨|없음이아님/.test(t)||dates.length>1;
   const negative=/(?:위반건축물(?:표시|등재|기재)?|위반표시)(?:해제|말소|삭제|없음|아님)|위반(?:건축물)?(?:사항|내용)?없음/.test(t);
   const remainder=t.replace(/(?:위반건축물(?:표시|등재|기재)?|위반표시)(?:해제|말소|삭제|없음|아님)/g,'').replace(/위반(?:건축물)?(?:사항|내용)?없음/g,'');
   const positive=/위반건축물|위반표시/.test(remainder);
