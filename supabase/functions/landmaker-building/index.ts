@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 const API_BASE = "https://apis.data.go.kr/1613000/BldRgstHubService";
-const METHODS: Record<string,string> = { title:"getBrTitleInfo", basic:"getBrBasisOulnInfo", floor:"getBrFlrOulnInfo", area:"getBrExposPubuseAreaInfo", lots:"getBrAtchJibunInfo", sewage:"getBrWclfInfo" };
+const METHODS: Record<string,string> = { units:"getBrExposInfo", title:"getBrTitleInfo", basic:"getBrBasisOulnInfo", floor:"getBrFlrOulnInfo", area:"getBrExposPubuseAreaInfo", lots:"getBrAtchJibunInfo", sewage:"getBrWclfInfo" };
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS"};
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}});
 const failureMessage=(code:string)=>code==='05'?'공공데이터 제공기관 연결 지연입니다. 잠시 후 다시 조회해 주세요.':'공공데이터 제공기관이 오류를 반환했습니다.';
