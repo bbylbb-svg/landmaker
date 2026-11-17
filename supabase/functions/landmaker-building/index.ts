@@ -31,6 +31,7 @@ Deno.serve(async(req)=>{
   if(!/^\d{5}$/.test(sigunguCd)||!/^\d{5}$/.test(bjdongCd)||!/^\d{4}$/.test(bun)||!/^\d{4}$/.test(ji)||!['0','1','2'].includes(platGbCd))return json({error:'법정동 코드 또는 지번 형식을 확인하세요.'},400);
   const url=new URL(`${API_BASE}/${method}`);
   for(const [k,v]of Object.entries({serviceKey:key,sigunguCd,bjdongCd,platGbCd,bun,ji,numOfRows:'100',pageNo:String(pageNo),_type:'json'}))url.searchParams.set(k,v);
+  if(type==='area')for(const field of ['dongNm','hoNm']){if(body[field]!=null){const value=String(body[field]).trim();if(value.length>100||/[\x00-\x1f]/.test(value))return json({error:'동·호실 형식을 확인하세요.'},400);if(value)url.searchParams.set(field,value)}}
   for(let attempt=1;attempt<=2;attempt++){
    let response:Response,raw:string;
    try{response=await fetch(url.toString(),{signal:AbortSignal.timeout(15000)});raw=await response.text()}
@@ -50,7 +51,7 @@ Deno.serve(async(req)=>{
    }
    // Missing/malformed bodies are failures, never a successful empty result.
    const data=result?.response?.body;
-   if(!data||typeof data!=='object'||(!('items'in data)&&!('totalCount'in data)))return json({success:false,error:'공공데이터 API 응답 형식을 확인할 수 없습니다.',upstreamStatus:response.status,resultCode:'INVALID_RESPONSE',attempts:attempt},502);
+   if(!data||typeof data!=='object'||(!('items'in data)&&!('totalCount'in data))){console.warn('building invalid upstream response',JSON.stringify({method,status:response.status,responseKeys:Object.keys(result||{}).slice(0,6)}));return json({success:false,error:(type==='area'?'전유·공용면적 조회: ':'')+'공공데이터 API 응답 형식을 확인할 수 없습니다.',upstreamStatus:response.status,resultCode:'INVALID_RESPONSE',attempts:attempt},502);}
    return json({success:true,type,data,attempts:attempt});
   }
   return json({success:false,error:'공공데이터 API 재시도에 실패했습니다.'},502);
