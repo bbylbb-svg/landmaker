@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {JSDOM}=require('jsdom');
+const api=require('../ledger-units/units.js');
+const rooms=[{key:'a',ho:'226',exclusiveSqm:'93.56',commonSqm:'97.28'},{key:'b',ho:'227',exclusiveSqm:'93.56',commonSqm:'97.28'}];
+const groups=[{unitKeys:['a','b'],name:'226 + 227',salePrice:'88000',status:'매매진행'}];
+const dom=new JSDOM(api.overview(rooms,groups));
+const table=dom.window.document.querySelector('tbody');
+assert.equal(table.rows.length,3);
+assert(table.rows[0].textContent.includes('381.68㎡'));
+assert(table.rows[0].textContent.includes('88,000만원'));
+assert(table.rows[1].textContent.includes('190.84㎡'));
+const unknown=new JSDOM(api.overview([{...rooms[0],commonSqm:''}],[]));
+assert.equal(unknown.window.document.querySelector('tbody tr').cells[3].textContent,'미확인');
+const normalized=api.normalize({sigunguCd:'1',bjdongCd:'2',bun:'3'},[{hoNm:'226',flrNoNm:'2층'}],[{hoNm:'226',flrNoNm:'2층',area:'93.56',exposPubuseGbCd:'1'},{hoNm:'226',flrNoNm:'지1층',area:'97.28',exposPubuseGbCd:'2'}]);
+assert.equal(normalized[0].floor,'2층');
+assert.equal(normalized[0].commonSqm,'97.28');
+assert(!api.overview([{...rooms[0],ho:'<script>'}]).includes('<script>'));
+console.log('Overview: bundle and individual amounts, exact totals, unknown areas, exclusive floor and escaping passed');
