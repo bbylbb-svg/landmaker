@@ -986,7 +986,7 @@ function lmEditFilterCategories(){
  draw();dialog.querySelector('#lmFilterNew').focus();
 }
 function customerListView(){
- $('#view').innerHTML=`<div class="panel"><h2>고객목록 · 통합 엑셀형</h2><p class="muted">등록 고객 · 매물 소유주 · Access 고객 · 원노트 상담을 한 목록에서 조회합니다. 원본은 수정하거나 자동 병합하지 않습니다. 자료 출처별 페이지는 별도로 조회합니다.</p><div class="row"><input id="cSearch" placeholder="고객명 · 업체명 · 전화번호 · 상담내용" style="min-width:260px"><select id="cSource"><option value="all">전체 자료</option><option value="customers">등록 고객</option><option value="owners">매물 소유주</option><option value="access">Access 고객</option><option value="notes">원노트</option></select><select id="cCat"><option value="">전체 분류</option>${lmFilterCategories().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}</select><button type="button" class="alt" id="cEditCategories" title="분류 선택지 추가·수정·삭제">⚙ 분류 편집</button><select id="cRecentSort"><option value="newest">최근 상담일 최신순</option><option value="oldest">최근 상담일 오래된순</option><option value="none">기존 순서</option></select><button id="cUnifiedSearch">검색</button><button class="alt" id="cReset">초기화</button><button class="alt" id="cAddNew">+ 고객 등록</button></div><div class="row" style="margin-top:10px"><button id="cUnifiedComplete" type="button">선택 고객 완료 (0)</button><button class="alt" id="cUnifiedUndo" type="button">고객 완료 취소 (0)</button><button class="danger" id="cUnifiedDelete" type="button">고객 삭제 (비밀번호 확인) (0)</button></div><p id="cUnifiedStatus" class="muted"></p><div class="tablewrap" style="overflow:auto"><table class="lm-sheet" id="cUnifiedTable" style="table-layout:fixed;min-width:1100px"><colgroup>${Array.from({length:9},(_,i)=>`<col data-unified-col="${i}">`).join('')}</colgroup><thead><tr>${['<input type="checkbox" id="cUnifiedCheckAll" aria-label="현재 목록 전체 선택">','자료 출처','고객명 / 제목','분류','연락처','담당자','최근 상담일','상담내용 / 보유매물','상세'].map((label,i)=>`<th style="position:relative">${label}<span class="lm-col-resize" data-unified-resize="${i}" title="드래그하여 열 너비 조절"></span></th>`).join('')}</tr></thead><tbody id="cUnifiedBody"></tbody></table></div><div id="cInfiniteStatus" class="muted" style="padding:14px;text-align:center">아래로 스크롤하면 다음 고객을 자동으로 불러옵니다.</div><div id="cInfiniteSentinel" style="height:3px"></div><p class="muted">※ 분류 칸에서 직접 변경할 수 있습니다. Access·원노트·소유주는 원본을 수정하지 않고 분류 변경사항을 공동 서버에 별도로 저장합니다. 분류 필터는 서버의 전체 원본 페이지를 확인하여 적용합니다. 자료량에 따라 처음 검색할 때 시간이 걸릴 수 있습니다.</p><p class="muted">※ 다른 자료에 같은 이름이 있어도 자동으로 합치지 않습니다. 등록 고객의 수정·완료·삭제는 상세 화면에서 이용하세요.</p></div>`;
+ $('#view').innerHTML=`<div class="panel"><h2>고객목록 · 통합 엑셀형</h2><p class="muted">등록 고객 · 매물 소유주 · Access 고객 · 원노트 상담을 한 목록에서 조회합니다. 원본은 수정하거나 자동 병합하지 않습니다. 자료 출처별 페이지는 별도로 조회합니다.</p><div class="row"><input id="cSearch" placeholder="고객명 · 업체명 · 전화번호 · 상담내용" style="min-width:260px"><select id="cSource"><option value="all">전체 자료</option><option value="customers">등록 고객</option><option value="owners">매물 소유주</option><option value="access">Access 고객</option><option value="notes">원노트</option></select><select id="cCat"><option value="">전체 분류</option>${lmFilterCategories().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}</select><button type="button" class="alt" id="cEditCategories" title="분류 선택지 추가·수정·삭제">⚙ 분류 편집</button><select id="cRecentSort"><option value="newest">최근 상담일 최신순</option><option value="oldest">최근 상담일 오래된순</option><option value="none">기존 순서</option></select><button id="cUnifiedSearch">검색</button><button class="alt" id="cReset">초기화</button><button class="alt" id="cAddNew">+ 고객 등록</button></div><div class="row" style="margin-top:10px"><button id="cUnifiedComplete" type="button">선택 고객 완료 (0)</button><button class="alt" id="cUnifiedUndo" type="button">고객 완료 취소 (0)</button><button class="danger" id="cUnifiedDelete" type="button">고객 삭제 (비밀번호 확인) (0)</button></div><label style="display:inline-flex;gap:8px;align-items:center"><input type="checkbox" id="cDeletedView" style="width:auto">삭제한 외부자료 보기 · 복원</label><p id="cUnifiedStatus" class="muted"></p><div class="tablewrap" style="overflow:auto"><table class="lm-sheet" id="cUnifiedTable" style="table-layout:fixed;min-width:1100px"><colgroup>${Array.from({length:9},(_,i)=>`<col data-unified-col="${i}">`).join('')}</colgroup><thead><tr>${['<input type="checkbox" id="cUnifiedCheckAll" aria-label="현재 목록 전체 선택">','자료 출처','고객명 / 제목','분류','연락처','담당자','최근 상담일','상담내용 / 보유매물','상세'].map((label,i)=>`<th style="position:relative">${label}<span class="lm-col-resize" data-unified-resize="${i}" title="드래그하여 열 너비 조절"></span></th>`).join('')}</tr></thead><tbody id="cUnifiedBody"></tbody></table></div><div id="cInfiniteStatus" class="muted" style="padding:14px;text-align:center">아래로 스크롤하면 다음 고객을 자동으로 불러옵니다.</div><div id="cInfiniteSentinel" style="height:3px"></div><p class="muted">※ 분류 칸에서 직접 변경할 수 있습니다. Access·원노트·소유주는 원본을 수정하지 않고 분류 변경사항을 공동 서버에 별도로 저장합니다. 분류 필터는 서버의 전체 원본 페이지를 확인하여 적용합니다. 자료량에 따라 처음 검색할 때 시간이 걸릴 수 있습니다.</p><p class="muted">※ 다른 자료에 같은 이름이 있어도 자동으로 합치지 않습니다. 등록 고객의 수정·완료·삭제는 상세 화면에서 이용하세요.</p></div>`;
  $('#cAddNew').onclick=()=>{tab='customers';editing=null;render()};
  $('#cEditCategories').onclick=lmEditFilterCategories;
  lmBindUnifiedWidths();lmInitUnifiedCustomerList();
@@ -998,10 +998,11 @@ function lmInitUnifiedCustomerList(){
  let filteredCache=null;
  const overrideMap=()=>db.customerCompletionOverrides||(db.customerCompletionOverrides={});
  const categoryMap=()=>db.customerCategoryOverrides||(db.customerCategoryOverrides={});
+ const deletedView=()=>!!$u('cDeletedView')?.checked;
  const assignedCat=r=>categoryMap()[r.key]?.category||r.category;
  const isDone=r=>r.source==='등록 고객'?['완료고객','완료'].includes(r.category):!!overrideMap()[r.key]?.done;
  const effectiveCat=r=>isDone(r)?'완료고객':assignedCat(r);
- const refreshButtons=()=>{const n=rows.filter(r=>selected.has(r.key)).length;$u('cUnifiedComplete').textContent=`선택 고객 완료 (${n})`;$u('cUnifiedUndo').textContent=`고객 완료 취소 (${n})`;$u('cUnifiedDelete').textContent=`고객 삭제 (비밀번호 확인) (${n})`;$u('cUnifiedCheckAll').checked=rows.length>0&&rows.every(r=>selected.has(r.key))};
+ const refreshButtons=()=>{const n=rows.filter(r=>selected.has(r.key)).length;$u('cUnifiedComplete').textContent=`선택 고객 완료 (${n})`;$u('cUnifiedUndo').textContent=`고객 완료 취소 (${n})`;$u('cUnifiedDelete').textContent=`${deletedView()?'선택 자료 복원':'고객 삭제 (비밀번호 확인)'} (${n})`;$u('cUnifiedCheckAll').checked=rows.length>0&&rows.every(r=>selected.has(r.key))};
  const safe=v=>esc(String(v??''));
  const norm=v=>String(v??'').toLowerCase();
  const pick=(d,keys)=>{for(const k of keys){const v=d?.[k];if(v!==undefined&&v!==null&&String(v).trim())return String(v)}return ''};
@@ -1024,7 +1025,7 @@ function lmInitUnifiedCustomerList(){
    if(r.source==='등록 고객'){
     const c=get('customers',r.customerId);if(!c){alert('고객을 찾을 수 없습니다.');renderRows();return;}c.category=value;
    }else{
-    categoryMap()[r.key]={category:value,at:new Date().toISOString()};
+    categoryMap()[r.key]={...categoryMap()[r.key],category:value,at:new Date().toISOString()};
    }
    try{
     const payload=JSON.stringify(db);
@@ -1178,7 +1179,7 @@ function lmInitUnifiedCustomerList(){
    }
    }
   if(serial!==seq||!$u('cUnifiedBody')){loading=false;return;}
-  const incoming=combined.filter(r=>category!=='완료고객'||isDone(r)||assignedCat(r)==='완료고객');
+  const incoming=combined.filter(r=>(deletedView()?!!categoryMap()[r.key]?.deleted:!categoryMap()[r.key]?.deleted)&&(category!=='완료고객'||isDone(r)||assignedCat(r)==='완료고객'));
   const existing=new Set(rows.map(r=>r.key));rows=append?[...rows,...incoming.filter(r=>!existing.has(r.key))]:incoming;renderRows();
   const summary=await summaryPromise;
   if(serial!==seq||!$u('cUnifiedBody')){loading=false;return;}
@@ -1220,16 +1221,16 @@ function lmInitUnifiedCustomerList(){
   const picked=rows.filter(r=>selected.has(r.key));
   if(!picked.length){alert('삭제할 고객을 먼저 선택해 주세요.');return}
   const nonRegistered=picked.filter(r=>r.source!=='등록 고객');
-  if(nonRegistered.length){alert('Access·원노트·소유주 원본은 이 화면에서 삭제하지 않습니다.\n등록 고객만 선택해서 다시 시도해 주세요.');return}
+  
   if(!authToken||!cloudReady){alert('공동저장 로그인 후 삭제할 수 있습니다.');return}
   if(cloudBusy||cloudPending){alert('공동 서버 저장이 끝난 뒤 다시 시도해 주세요.');return}
   const ids=[...new Set(picked.map(r=>r.customerId))].filter(k=>get('customers',k));
-  if(!ids.length)return;
   const linked=db.records.filter(r=>ids.includes(r.customerId)).length;
-  const ok=await askDeletePassword(`등록 고객 ${ids.length}명 삭제`,`선택한 등록 고객 ${ids.length}명과 연결 상담기록 ${linked}건이 삭제됩니다.\n매물은 유지되며 고객 연결만 해제됩니다.\n이 작업은 공동 서버에 반영되며 백업 없이는 복구할 수 없습니다.`);
+  const ok=await askDeletePassword(deletedView()?'선택 자료 복원':`선택 고객 ${picked.length}건 삭제`,deletedView()?'선택 자료를 통합 고객목록에 복원합니다.':`등록 고객 ${ids.length}명과 연결 상담 ${linked}건 삭제 / 외부자료 ${nonRegistered.length}건 목록 삭제.\nAccess·원노트·소유주 원본은 보존되며 삭제한 외부자료 보기에서 복원할 수 있습니다.`);
   if(!ok)return;
   if(cloudBusy||cloudPending){alert('저장이 진행 중입니다. 다시 시도해 주세요.');return}
   const idSet=new Set(ids),before=JSON.stringify(db);
+  for(const r of nonRegistered)categoryMap()[r.key]={...categoryMap()[r.key],deleted:!deletedView(),deletedAt:deletedView()?null:new Date().toISOString()};
   db.customers=db.customers.filter(c=>!idSet.has(c.id));
   db.records=db.records.filter(r=>!idSet.has(r.customerId));
   db.properties.forEach(p=>{if(idSet.has(p.customerId))p.customerId=''});
@@ -1237,11 +1238,12 @@ function lmInitUnifiedCustomerList(){
    const payload=JSON.stringify(db);
    const result=await cloudRPC('lm_cloud_write',{p_expected_version:cloudVersion,p_data:JSON.parse(payload)});
    if(!result||result.ok!==true)throw Error('서버 버전 충돌이 발생했습니다. 동기화 후 다시 시도해 주세요.');
-   cloudVersion=result.version;cloudLastSaved=payload;lmAuditBaseline=lmAuditSnapshot();selected.clear();showSaveStatus(`등록 고객 ${ids.length}명 삭제 완료 · 서버 버전 ${cloudVersion}`,false);await search();
+   cloudVersion=result.version;cloudLastSaved=payload;lmAuditBaseline=lmAuditSnapshot();selected.clear();showSaveStatus(`${picked.length}건 ${deletedView()?'복원':'삭제'} 완료 · 서버 버전 ${cloudVersion}`,false);await search();
   }catch(e){db=JSON.parse(before);alert('삭제 저장 실패: '+e.message+'\n서버 데이터는 삭제되지 않았습니다.');showSaveStatus('고객 삭제 실패: '+e.message,true)}
  };
 
  const resetSearch=()=>{page=0;finished=false;loading=false;void search(false)};
+ $u('cDeletedView').onchange=()=>{selected.clear();resetSearch()};
  $u('cUnifiedSearch').onclick=resetSearch;$u('cSearch').onkeydown=e=>{if(e.key==='Enter')resetSearch()};
  $u('cSource').onchange=$u('cCat').onchange=$u('cRecentSort').onchange=resetSearch;
  $u('cReset').onclick=()=>{$u('cSearch').value='';$u('cSource').value='all';$u('cCat').value='';$u('cRecentSort').value='newest';resetSearch()};
