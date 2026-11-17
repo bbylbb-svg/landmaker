@@ -1452,14 +1452,14 @@ function lmBindOwnerParcelScope(row,f){
  mode.value=modeField.value||'unspecified';
  const selected=()=>{try{return JSON.parse(hidden.value||'[]')}catch{return []}};
  const refresh=()=>{
- const values=selected(),available=[...new Set(lmOwnerScopeOptions(f,kind))],all=[...new Set([...available,...values])];
- items.hidden=mode.value!=='selected';items.style.display=items.hidden?'none':'flex';
+ const unitMode=kind==='building'&&lmOwnerUnitRows(f).length>0;const targetLabel=kind==='land'?'필지':unitMode?'호실':'건물동';box.querySelector('label').firstChild.textContent='대상 '+targetLabel;mode.setAttribute('aria-label','소유주의 대상 '+targetLabel+' 지정');mode.querySelector('[value=all]').textContent='전체 '+targetLabel;const values=selected(),available=[...new Set(lmOwnerScopeOptions(f,kind))],all=[...new Set([...available,...values])];
+ items.hidden=!unitMode&&mode.value!=='selected';items.style.display=items.hidden?'none':'flex';
  items.innerHTML=all.map((v,i)=>'<label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" data-owner-scope-choice="'+i+'" style="width:auto;margin:0" '+(values.includes(v)?'checked':'')+'>'+esc(v)+(available.includes(v)?'':' (기존 연결 · 주소 확인 필요)')+'</label>').join('')||'<p class="muted">먼저 '+(kind==='land'?'토지 필지':'건물동')+'를 입력하세요.</p>';
- const validate=()=>{mode.setCustomValidity(mode.value==='selected'&&!selected().length?'대상 필지 또는 건물동을 하나 이상 선택하세요.':'');help.textContent=mode.value==='unspecified'?'아직 어느 대상의 소유주인지 연결되지 않았습니다.':mode.value==='all'?'이 매물의 전체 '+(kind==='land'?'필지':'건물동')+'에 연결됩니다.':'선택한 대상에만 연결됩니다. 공동명의는 다른 소유주도 같은 대상을 선택하세요.'};
- items.querySelectorAll('input').forEach(input=>input.onchange=()=>{hidden.value=JSON.stringify([...items.querySelectorAll('input:checked')].map(c=>all[Number(c.dataset.ownerScopeChoice)]));validate();f.dispatchEvent(new Event('input',{bubbles:true}))});validate();
+ const validate=()=>{mode.setCustomValidity(mode.value==='selected'&&!selected().length?'대상 필지 또는 건물동을 하나 이상 선택하세요.':'');help.textContent=mode.value==='unspecified'?'아직 어느 대상의 소유주인지 연결되지 않았습니다.':mode.value==='all'?'이 매물의 전체 '+targetLabel+'에 연결됩니다.':'선택한 대상에만 연결됩니다. 공동명의는 다른 소유주도 같은 대상을 선택하세요.'};
+ items.querySelectorAll('input').forEach(input=>input.onchange=()=>{mode.value='selected';modeField.value='selected';hidden.value=JSON.stringify([...items.querySelectorAll('input:checked')].map(c=>all[Number(c.dataset.ownerScopeChoice)]));validate();f.dispatchEvent(new Event('input',{bubbles:true}))});validate();
  };
  mode.onchange=()=>{modeField.value=mode.value;if(mode.value!=='selected')hidden.value='[]';refresh();f.dispatchEvent(new Event('input',{bubbles:true}))};
- f.addEventListener('input',e=>{if(e.target.closest?.('#parcelFields,#buildingFields'))refresh()});refresh();
+ f.addEventListener('input',e=>{if(e.target.closest?.('#parcelFields,#buildingFields')||e.target.name==='unitRoomsDraft')refresh()});refresh();
 }
 
 function lmOwnerEvents(p){return Array.isArray(p?.ownerTransfers)?p.ownerTransfers:[]}
@@ -1473,7 +1473,16 @@ function lmOwnerHistoryHtml(events){
  return '<article style="border:1px solid #d7e3e8;border-radius:10px;background:#fff;padding:14px 16px;min-width:0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><strong>'+esc(e.date||'변경일 미확인')+'</strong><span style="background:#eef5f6;border-radius:5px;padding:3px 8px;font-size:12px">'+esc(target)+'</span>'+(e.reason?'<span style="color:#607985">'+esc(e.reason)+'</span>':'')+'</div><div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><div><small style="color:#607985">이전 소유주</small>'+person(e.before)+'</div><span aria-hidden="true" style="color:#7b969f">→</span><div><small style="color:#607985">변경 후 소유주</small>'+person(e.after)+'</div></div><details style="margin-top:12px;border-top:1px solid #edf1f4;padding-top:10px"><summary style="cursor:pointer;color:#087f87;font-weight:600">상세보기 · 필지·연락처·메모</summary><div style="padding-top:10px"><strong>변경 대상</strong><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(e.target||e.kind)+'</p><h4 style="margin:16px 0 4px">이전 소유주 정보</h4>'+info(e.before)+'<h4 style="margin:16px 0 4px">변경 후 소유주 정보</h4>'+info(e.after)+'</div></details></article>';
  }).join('')+'</div>';
 }
-function lmOwnerScopeOptions(f,kind){return kind==='land'?parseParcels(f).map(z=>formatLot(z)).filter(Boolean):parseBuildings(f).map((b,i)=>(b.buildingName||b.name||'건물')+' #'+(i+1))}
+function lmOwnerUnitRows(f){try{return LMUnitLedger.read(f)}catch{return []}}
+function lmOwnerUnitScope(u){return [u.address,u.dong||u.buildingName,(u.ho||'')+'호'].filter(Boolean).join(' · ')}
+function lmOwnerScopeOptions(f,kind){if(kind==='land')return parseParcels(f).map(z=>formatLot(z)).filter(Boolean);const units=lmOwnerUnitRows(f);return units.length?units.map(lmOwnerUnitScope):parseBuildings(f).map((b,i)=>(b.buildingName||b.name||'건물')+' #'+(i+1))}
+function lmRefreshUnitOwners(f){
+ const host=f.querySelector('#buildingOwnerFields');if(!host)return;
+ let box=f.querySelector('[data-unit-owner-summary]');if(!box){box=document.createElement('section');box.setAttribute('data-unit-owner-summary','');host.before(box)}
+ const units=lmOwnerUnitRows(f),owners=parseOwners(f,'building');
+ box.innerHTML=units.length?'<h4>호실별 소유주 현황</h4>'+units.map(u=>{const scope=lmOwnerUnitScope(u),found=owners.filter(o=>o.scopeMode==='all'||o.scope?.includes(scope));return '<p><b>'+esc(scope)+'</b> · '+(found.map(o=>esc(o.name||'이름 미입력')+(o.share?' (지분 '+esc(o.share)+')':'')+(o.personCode?' · '+esc(o.personCode):'')).join(', ')||'소유주 연결 필요')+'</p>'}).join('')+'<p class="muted">아래 소유주 입력에서 해당 호실을 체크하세요. 한 사람이 여러 호실을 소유하면 여러 개 체크하고, 공동명의는 소유주를 추가해 같은 호실을 체크하세요.</p>':'';
+}
+
 function lmStageOwnerChange(before,after,kind,date,reason,target){
  if(!before?.name||!after?.name)throw Error('이전·새 소유주명을 입력하세요.');
  if(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date))throw Error('변경일을 정확히 입력하거나 비워 두세요.');
@@ -1516,7 +1525,7 @@ function lmBindOwnerChanges(f){
  decorate();f.dispatchEvent(new Event('input',{bubbles:true}));lmCapturePropertyDraft();
  }catch(e){overlay.querySelector('[data-change-error]').textContent=e.message;}};
  };
- decorate();lmRefreshParcelOwners(f);f.addEventListener('input',()=>lmRefreshParcelOwners(f));f.addEventListener('change',()=>lmRefreshParcelOwners(f));new MutationObserver(records=>{decorate();if(records.some(r=>r.target.id==='landOwnerFields'))lmRefreshParcelOwners(f)}).observe(f,{childList:true,subtree:true});
+ decorate();lmRefreshParcelOwners(f);lmRefreshUnitOwners(f);f.addEventListener('input',()=>{lmRefreshParcelOwners(f);lmRefreshUnitOwners(f)});f.addEventListener('change',()=>{lmRefreshParcelOwners(f);lmRefreshUnitOwners(f)});new MutationObserver(records=>{decorate();if(records.some(r=>r.target.id==='landOwnerFields'))lmRefreshParcelOwners(f);if(records.some(r=>r.target.id==='buildingOwnerFields'))lmRefreshUnitOwners(f)}).observe(f,{childList:true,subtree:true});
 }
 const lmOriginalOwnerDirectory=lmOwnerDirectory;
 lmOwnerDirectory=function(){
