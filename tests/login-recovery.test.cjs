@@ -1,21 +1,17 @@
-const assert=require('node:assert/strict'),fs=require('fs'),{JSDOM}=require('jsdom');
+const assert=require('node:assert/strict'),fs=require('fs'),{JSDOM}=require('jsdom'),{IDBFactory,IDBKeyRange}=require('fake-indexeddb');
 (async()=>{for(const file of ['index.html','offline-test/index.html']){
- const dom=new JSDOM(fs.readFileSync(file,'utf8'),{runScripts:'dangerously',pretendToBeVisual:true,url:'https://example.com',beforeParse(w){const Base=w.MutationObserver;w.obs=[];w.MutationObserver=class extends Base{constructor(cb){super(cb);w.obs.push(this)}}}}),w=dom.window;
- w.eval(`
- window.fixture={customers:[],properties:[{id:'local',title:'보존할 PC 매물'}],records:[],schedules:[],transactions:[],ownership:[],quick:[]};
- window.serverData={...fixture,properties:[{id:'server',title:'서버 매물'}]};window.pending={data:JSON.stringify(fixture),at:'2026-11-18',version:1};window.reads=0;window.renders=0;window.downloads=0;
- checkStaff=async()=>({name:'시험직원',auth_user_id:'test-user'});lmSafeGet=async()=>pending;cloudRPC=async(fn)=>{if(fn!=='lm_cloud_read')throw Error('unexpected write');reads++;return {version:2,data:serverData}};render=()=>{renders++};lmSafeDownload=()=>{downloads++};window.lmCacheSnapshot=async()=>{};lmSyncRows=async()=>[];window.lmEnsureOfflineArchives=()=>{};
- window.originalDB=db;`);
- await w.eval(`activateAuth('valid-token')`);
- assert.equal(w.document.querySelector('#authGate').hidden,true);assert.equal(w.document.querySelector('#authInfo').hidden,false);assert(w.document.querySelector('#view').textContent.includes('로그인 완료'));
- assert.equal(w.lmRecoveryBlocked,true);assert.equal(w.renders,0);assert(w.eval('db===originalDB'));assert.equal(w.eval('authToken'),'valid-token');assert.equal(w.pending.data,JSON.stringify(w.fixture));
- const before=w.reads;await w.eval('lmSyncFlush()');assert.equal(w.reads,before);await assert.rejects(w.eval('lmCloudWriteProtected({})'),/서버에 저장할 수 없습니다/);
- w.document.querySelector('[data-recovery-local]').click();assert(w.document.querySelector('[data-recovery-data]').textContent.includes('보존할 PC 매물')===false); // default is customers; change to properties
- const select=w.document.querySelector('[data-recovery-kind]');select.value='properties';select.dispatchEvent(new w.Event('change'));assert(w.document.querySelector('[data-recovery-data]').textContent.includes('보존할 PC 매물'));
- w.document.querySelector('[data-recovery-server]').click();const select2=w.document.querySelector('[data-recovery-kind]');select2.value='properties';select2.dispatchEvent(new w.Event('change'));assert(w.document.querySelector('[data-recovery-data]').textContent.includes('서버 매물'));
- w.document.querySelector('[data-recovery-download]').click();assert.equal(w.downloads,1);assert.equal(w.pending.data,JSON.stringify(w.fixture));
- // Exact server match permits ordinary login without deleting the preserved snapshot.
- w.eval(`lmSyncFlush=async()=>{};serverData=JSON.parse(pending.data)`);await w.eval(`activateAuth('valid-token')`);assert.equal(w.lmRecoveryBlocked,false);assert.equal(w.renders,1);assert.equal(w.eval('db.properties[0].id'),'local');assert(w.pending.data);
+ const dom=new JSDOM(fs.readFileSync(file,'utf8'),{runScripts:'dangerously',pretendToBeVisual:true,url:'https://example.com',beforeParse(w){w.indexedDB=new IDBFactory();w.IDBKeyRange=IDBKeyRange;const Base=w.MutationObserver;w.obs=[];w.MutationObserver=class extends Base{constructor(cb){super(cb);w.obs.push(this)}}}}),w=dom.window;
+ w.eval(`window.fixture={customers:[],properties:[{id:'local',title:'보존할 PC 매물'}],records:[],schedules:[],transactions:[],ownership:[],quick:[]};window.serverData={...fixture,properties:[{id:'server',title:'서버 매물'}]};window.reads=0;window.renders=0;window.downloads=0;checkStaff=async()=>({name:'시험직원',auth_user_id:'test-user'});cloudRPC=async(fn)=>{if(fn!=='lm_cloud_read')throw Error('unexpected server write');reads++;return {version:2,data:serverData}};render=()=>{renders++};lmSafeDownload=()=>{downloads++};window.lmCacheSnapshot=async()=>{};lmSyncRows=async()=>[];window.lmEnsureOfflineArchives=()=>{};lmSyncFlush=async()=>{};`);
+ await w.eval(`lmSafePut(fixture,'서버 저장 전 보관')`);await w.eval(`activateAuth('valid-token')`);
+ assert.equal(w.document.querySelector('#authGate').hidden,true);assert.equal(w.document.querySelector('#authInfo').hidden,false);assert.equal(w.lmRecoveryBlocked,false);assert.equal(w.renders,1);assert.equal(w.eval('db.properties[0].id'),'server');assert.equal(await w.eval('lmSafeGet()'),null);
+ const archived=await w.eval('lmSafeReviewList()');assert.equal(archived.length,1);assert.deepEqual(JSON.parse(archived[0].data),JSON.parse(JSON.stringify(w.fixture)));assert.equal(archived[0].resolution,'login-with-server-copy');
+ assert(w.document.querySelector('#lmSavedRecoveryNotice').textContent.includes('별도 보관'));assert(w.document.querySelector('#lmSavedRecoveryOpen'));
+ await w.eval('lmOpenSavedRecovery()');const download=[...w.document.querySelectorAll('button')].find(b=>b.textContent==='원본 백업 다운로드');assert(download);download.click();assert.equal(w.downloads,1);
+ await w.eval(`activateAuth('valid-token')`);assert.equal(w.renders,2);assert.equal((await w.eval('lmSafeReviewList()')).length,1);
+ // An archive failure cannot turn authenticated login into a credential failure or erase the pending snapshot.
+ w.eval(`lmSafeArchivePending=async()=>{throw Error('disk full')}`);await w.eval(`lmSafePut(fixture,'다른 PC 변경 확인')`);await w.eval(`activateAuth('valid-token')`);assert.equal(w.renders,3);assert.equal(w.lmRecoveryBlocked,false);assert(await w.eval('lmSafeGet()'));assert.equal(w.eval('db.properties[0].id'),'server');
+ // Network failure after successful staff authentication keeps the authenticated session and exposes a data retry.
+ w.eval(`cloudRPC=async()=>{throw Error('network failure')}`);await w.eval(`activateAuth('valid-token')`);assert.equal(w.document.querySelector('#authGate').hidden,true);assert(w.document.querySelector('#lmDataLoadRetry'));assert.equal(w.eval('authToken'),'valid-token');assert(await w.eval('lmSafeGet()'));
  w.eval(`checkStaff=async()=>{throw Error('직원 아님')}`);await assert.rejects(w.eval(`activateAuth('invalid')`),/직원 아님/);
- for(const o of w.obs)o.disconnect();dom.window.close();console.log(file+': recovery login, immutable comparison/backup, blocked writes, identical server match and invalid staff passed');
+ for(const o of w.obs)o.disconnect();dom.window.close();console.log(file+': nonblocking login, immutable IndexedDB archive, subsequent login, archive failure, network retry and invalid staff passed');
 }})().catch(e=>{console.error(e);process.exit(1)});
