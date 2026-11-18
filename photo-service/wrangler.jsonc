@@ -1,0 +1,14 @@
+{
+ "name":"landmaker-photos-staging",
+ "main":"worker.mjs",
+ "compatibility_date":"2026-11-18",
+ "workers_dev":true,
+ "r2_buckets":[{"binding":"PHOTOS","bucket_name":"landmaker-photos-staging","preview_bucket_name":"landmaker-photos-staging"}],
+ "vars":{
+  "SUPABASE_URL":"REPLACE_WITH_TEST_SUPABASE_URL",
+  "SUPABASE_PUBLISHABLE_KEY":"REPLACE_WITH_TEST_PUBLISHABLE_KEY",
+  "ALLOWED_ORIGINS":"http://localhost:8788,http://127.0.0.1:8788"
+ }
+ // Secrets set using wrangler secret put: SUPABASE_SERVICE_KEY and TICKET_SECRET.
+ // No r2.dev public bucket URL and no Cloudflare API secret in browser code.
+}
