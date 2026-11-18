@@ -1,0 +1,1 @@
+{"name":"landmaker-private-photos","private":true,"type":"module","scripts":{"test":"node --test test/*.test.mjs"},"devDependencies":{"@electric-sql/pglite":"0.5.16","fake-indexeddb":"6.2.4","jsdom":"26.1.0","sharp":"0.35.5"}}
