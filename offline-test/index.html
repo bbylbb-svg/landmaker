@@ -1462,14 +1462,14 @@ function lmBindOwnerParcelScope(row,f){
  mode.value=modeField.value||'unspecified';
  const selected=()=>{try{return JSON.parse(hidden.value||'[]')}catch{return []}};
  const refresh=()=>{
- const unitMode=kind==='building'&&lmOwnerUnitRows(f).length>0;const targetLabel=kind==='land'?'필지':unitMode?'호실':'건물동';box.querySelector('label').firstChild.textContent='대상 '+targetLabel;mode.setAttribute('aria-label','소유주의 대상 '+targetLabel+' 지정');mode.querySelector('[value=all]').textContent='전체 '+targetLabel;const values=selected(),available=[...new Set(lmOwnerScopeOptions(f,kind))],all=[...new Set([...available,...values])];
+ const unitMode=kind==='building'&&lmOwnerUnitRows(f).length>0;const targetLabel=kind==='land'?'필지':unitMode?'호실':'건물동';box.querySelector('label').firstChild.textContent='대상 '+targetLabel;mode.setAttribute('aria-label','소유주의 대상 '+targetLabel+' 지정');mode.querySelector('[value=all]').textContent='전체 '+targetLabel;const values=selected(),options=lmOwnerScopeOptions(f,kind),available=[...new Set(options.map((v,i)=>kind==='building'&&!unitMode?(values.find(old=>String(old).match(/ #([1-9]\d*)$/)?.[1]===String(i+1))||v):v))],all=[...new Set([...available,...values])];
  items.hidden=!unitMode&&mode.value!=='selected';items.style.display=items.hidden?'none':'flex';
- items.innerHTML=all.map((v,i)=>'<label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" data-owner-scope-choice="'+i+'" style="width:auto;margin:0" '+(values.includes(v)?'checked':'')+'>'+esc(v)+(available.includes(v)?'':' (기존 연결 · 주소 확인 필요)')+'</label>').join('')||'<p class="muted">먼저 '+(kind==='land'?'토지 필지':'건물동')+'를 입력하세요.</p>';
+ items.innerHTML=all.map((v,i)=>'<label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" data-owner-scope-choice="'+i+'" style="width:auto;margin:0" '+(values.includes(v)?'checked':'')+'>'+esc(lmOwnerScopeDisplay(f,kind,v))+(available.includes(v)?'':' (기존 연결 · 주소 확인 필요)')+'</label>').join('')||'<p class="muted">먼저 '+(kind==='land'?'토지 필지':'건물동')+'를 입력하세요.</p>';
  const validate=()=>{mode.setCustomValidity(mode.value==='selected'&&!selected().length?'대상 필지 또는 건물동을 하나 이상 선택하세요.':'');help.textContent=mode.value==='unspecified'?'아직 어느 대상의 소유주인지 연결되지 않았습니다.':mode.value==='all'?'이 매물의 전체 '+targetLabel+'에 연결됩니다.':'선택한 대상에만 연결됩니다. 공동명의는 다른 소유주도 같은 대상을 선택하세요.'};
  items.querySelectorAll('input').forEach(input=>input.onchange=()=>{mode.value='selected';modeField.value='selected';hidden.value=JSON.stringify([...items.querySelectorAll('input:checked')].map(c=>all[Number(c.dataset.ownerScopeChoice)]));validate();f.dispatchEvent(new Event('input',{bubbles:true}))});validate();
  };
  mode.onchange=()=>{modeField.value=mode.value;if(mode.value!=='selected')hidden.value='[]';refresh();f.dispatchEvent(new Event('input',{bubbles:true}))};
- f.addEventListener('input',e=>{if(e.target.closest?.('#parcelFields,#buildingFields')||e.target.name==='unitRoomsDraft')refresh()});refresh();
+ for(const event of ['input','change'])f.addEventListener(event,e=>{if(e.target.closest?.('#parcelFields,#buildingFields')||e.target.name==='unitRoomsDraft')refresh()});refresh();
 }
 
 function lmOwnerEvents(p){return Array.isArray(p?.ownerTransfers)?p.ownerTransfers:[]}
@@ -1485,6 +1485,14 @@ function lmOwnerHistoryHtml(events){
 }
 function lmOwnerUnitRows(f){try{return LMUnitLedger.read(f)}catch{return []}}
 function lmOwnerUnitScope(u){return [u.address,u.dong||u.buildingName,(u.ho||'')+'호'].filter(Boolean).join(' · ')}
+function lmOwnerScopeDisplay(f,kind,value){
+ if(kind!=='building'||lmOwnerUnitRows(f).length)return value;
+ const match=String(value).match(/ #([1-9]\d*)$/);if(!match)return value;
+ const b=parseBuildings(f)[Number(match[1])-1];if(!b)return value+' (현재 건물정보 없음)';
+ const lots=b.relatedLots||b.ledgerAddress||parseParcels(f).map(formatLot).filter(Boolean).join(' / ');
+ const rooms=[...new Set((b.levels||[]).map(l=>String(l.levelName||'').trim()).filter(Boolean))].map(v=>/^\d+(?:\s*[+·,]\s*\d+)*$/.test(v)?v+'호':v).join(' · ');
+ return [lots,b.buildingName||b.name,rooms].filter(Boolean).join(' · ')||'건물 '+match[1]+' · 지번·동·호수 미입력';
+}
 function lmOwnerScopeOptions(f,kind){if(kind==='land')return parseParcels(f).map(z=>formatLot(z)).filter(Boolean);const units=lmOwnerUnitRows(f);return units.length?units.map(lmOwnerUnitScope):parseBuildings(f).map((b,i)=>(b.buildingName||b.name||'건물')+' #'+(i+1))}
 function lmRefreshUnitOwners(f){
  const host=f.querySelector('#buildingOwnerFields');if(!host)return;
