@@ -40,8 +40,8 @@ export function createHandler(storeFactory=env=>new SupabaseStore(env)){
    if(!['GET','POST'].includes(req.method))fail(405,'지원하지 않는 요청입니다.');
    const token=req.headers.get('Authorization')?.match(/^Bearer (\S+)$/i)?.[1];if(!token)fail(401,'직원 로그인이 필요합니다.');
    const store=storeFactory(env),uid=await store.authenticate(token);await store.call(uid,'authorize');
-   const url=new URL(req.url);
-   if(req.method==='GET'&&url.pathname==='/media'){
+   const url=new URL(req.url),basePath=(env.API_BASE_PATH||'').replace(/\/$/,'');const path=url.pathname.startsWith(basePath+'/')?url.pathname.slice(basePath.length):url.pathname;
+   if(req.method==='GET'&&path==='/media'){
     const t=await verifyTicket(url.searchParams.get('ticket')||'',env.TICKET_SECRET,uid);
     if(!['full','thumb'].includes(t.variant)||!['view','download'].includes(t.purpose))fail(400,'사진 요청 오류');
     const photo=await store.call(uid,'media',{propertyId:t.propertyId,assetId:t.assetId,purpose:t.purpose,variant:t.variant});
@@ -51,7 +51,7 @@ export function createHandler(storeFactory=env=>new SupabaseStore(env)){
     return new Response(object.body,{headers:{...headers,'Content-Type':'image/jpeg','Content-Disposition':(t.purpose==='download'?'attachment':'inline')+'; filename="landmaker-'+t.assetId+'.jpg"'}});
    }
    if(req.method!=='POST')fail(404,'요청 경로 오류');
-   if(url.pathname==='/upload'){
+   if(path==='/upload'){
     const bytes=await limitedBody(req,850*1024);let form;
     try{form=await new Response(bytes,{headers:{'Content-Type':req.headers.get('Content-Type')||''}}).formData();}catch{fail(400,'업로드 형식 오류');}
     const propertyId=String(form.get('propertyId')||'');const full=form.get('full'),thumb=form.get('thumb');
@@ -68,7 +68,7 @@ export function createHandler(storeFactory=env=>new SupabaseStore(env)){
      throw error;
     }
    }
-   if(url.pathname!=='/api')fail(404,'요청 경로 오류');
+   if(path!=='/api')fail(404,'요청 경로 오류');
    let payload;try{payload=JSON.parse(new TextDecoder().decode(await limitedBody(req,32*1024)));}catch(e){if(e instanceof Failure)throw e;fail(400,'요청 형식 오류');}
    const {action,...args}=payload||{};
    if(!['list','update','reorder','link','unlink','restore','usage','covers','ticket'].includes(action))fail(400,'지원하지 않는 사진 작업입니다.');
@@ -76,7 +76,7 @@ export function createHandler(storeFactory=env=>new SupabaseStore(env)){
     if(!['full','thumb'].includes(args.variant)||!['view','download'].includes(args.purpose))fail(400,'사진 요청 오류');
     await store.call(uid,'checkMedia',args);
     const ticket=await signTicket({uid,propertyId:args.propertyId,assetId:args.assetId,variant:args.variant,purpose:args.purpose,exp:Math.floor(Date.now()/1000)+60},env.TICKET_SECRET);
-    return json({url:url.origin+'/media?ticket='+ticket,expiresIn:60});
+    return json({url:url.origin+basePath+'/media?ticket='+ticket,expiresIn:60});
    }
    return json(await store.call(uid,action,args));
   }catch(error){return json({error:error instanceof Failure?error.message:'사진 처리에 실패했습니다. 잠시 후 다시 시도하세요.'},error.status||503);}

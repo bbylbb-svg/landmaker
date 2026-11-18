@@ -35,7 +35,7 @@ create table public.lm_photo_meter (
 create table public.lm_photo_limits (
  id integer primary key check(id=1), max_bytes bigint not null check(max_bytes>0), max_class_a bigint not null, max_class_b bigint not null
 );
--- Headroom below R2 free tier; tracks THIS application's reservations and reads only.
+-- Initial application usage guardrails; NAVER storage is paid by usage, not a free tier.
 insert into public.lm_photo_limits values(1,8000000000,900000,9000000);
 -- No implicit photo permissions for any existing employee. Explicitly enable after review.
 insert into public.lm_photo_permissions(staff_id) select id from public.lm_staff;
@@ -80,7 +80,7 @@ begin
  if p_args ? 'assetId' then aid := (p_args->>'assetId')::uuid; end if;
  if p_action='usage' then
   select coalesce(sum(bytes+thumb_bytes),0) into used from public.lm_photo_assets;
-  result := jsonb_build_object('count',(select count(*) from public.lm_photo_assets where state='ready'),'bytes',used,'pending',(select count(*) from public.lm_photo_assets where state='pending'),'classA',met.class_a,'classB',met.class_b,'limits',to_jsonb(lim),'scope','이 앱 전용 · 계정 전체 청구량은 Cloudflare에서 확인');
+  result := jsonb_build_object('count',(select count(*) from public.lm_photo_assets where state='ready'),'bytes',used,'pending',(select count(*) from public.lm_photo_assets where state='pending'),'classA',met.class_a,'classB',met.class_b,'limits',to_jsonb(lim),'scope','이 앱 전용 · 실제 저장·전송 요금은 네이버클라우드에서 확인');
  elsif p_action='covers' then
   if jsonb_typeof(p_args->'propertyIds')<>'array' or jsonb_array_length(p_args->'propertyIds')>100 then raise exception 'invalid cover batch'; end if;
   select coalesce(jsonb_agg(jsonb_build_object('propertyId',q.property_id,'assetId',q.asset_id)),'[]') into result from
