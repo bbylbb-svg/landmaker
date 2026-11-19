@@ -11,12 +11,21 @@ const base=typeof document==='undefined'?'':new URL('./templates/sale-fixed.json
 let pending;
 function load(){return pending||(pending=fetch(base).then(r=>{if(!r.ok)throw Error('고정 엑셀 양식을 불러오지 못했습니다. 새로고침 후 다시 열어주세요.');return r.json();}).catch(e=>{pending=null;throw e;}));}
 function infer(p){return /토지/.test(p.propertyKind||'')?'land':/상가|사무실|지식산업|지산/.test(p.propertyKind||'')?'shop':/주택|아파트|빌라/.test(p.propertyKind||'')?'home':'factory';}
+function smallUse(value){
+ let text=String(value||'').trim();
+ // Keep the recorded specific use; never infer one from a broad legal category.
+ text=text.replace(/^(?:업무시설|판매시설|공장|창고시설)\s*[（(](.+)[）)]$/,'$1');
+ text=text.replace(/제?\s*[12]\s*종\s*근린\s*생활\s*시설|제?\s*[12]\s*종\s*근생|근린\s*생활\s*시설/g,'');
+ text=text.replace(/[（(]\s*[）)]/g,'').replace(/^[\s·:：/\-]+|[\s·:：/\-]+$/g,'').trim();
+ if(/^[（(].*[）)]$/.test(text))text=text.slice(1,-1).trim();
+ return text;
+}
 function plan(m,o,bundle){
  const key=o.template||infer(m.p),template=bundle.sheets[key];if(!template)throw Error('지원하지 않는 고정 양식입니다.');
  const p=m.p,parcels=m.parcels||[],rooms=p.unitRooms||[],shop=key==='shop';
- const floors=(p.buildings||[]).flatMap(b=>(b.levels?.length?b.levels:[{levelName:b.floors,levelUse:b.buildingUse,sqm:b.floorSqm}]).filter(l=>!b.perFloorSale||l.forSale).map(l=>({name:l.levelUse||b.buildingUse||'',area:number(l.sqm),floor:l.levelName||''})));
+ const floors=(p.buildings||[]).flatMap(b=>(b.levels?.length?b.levels:[{levelName:b.floors,levelUse:b.buildingUse,sqm:b.floorSqm}]).filter(l=>!b.perFloorSale||l.forSale).map(l=>({name:smallUse(l.levelUse||b.buildingUse),area:number(l.sqm),floor:l.levelName||''})));
  const left=shop?rooms.map(u=>({name:[u.address,u.dong,u.ho].filter(Boolean).join(' · '),area:number(u.exclusiveSqm)!==null&&number(u.commonSqm)!==null?Number(u.exclusiveSqm)+Number(u.commonSqm):null,detail:u.floor||''})):parcels.map(x=>({name:[x.san?'산':'',x.main].filter(Boolean).join(' ')+(x.sub?'-'+x.sub:''),area:number(x.sqm),detail:x.landUse||''}));
- const right=key==='land'?[]:shop?rooms.map(u=>({name:[u.dong,u.ho,u.use].filter(Boolean).join(' · '),area:number(u.exclusiveSqm),floor:u.floor||''})):floors;
+ const right=key==='land'?[]:shop?rooms.map(u=>({name:[u.dong,u.ho,smallUse(u.exclusiveUse||u.use)].filter(Boolean).join(' · '),area:number(u.exclusiveSqm),floor:u.floor||''})):floors;
  const total=Math.max(1,Math.ceil(Math.max(left.length,right.length)/9)),land=sum(left,'area'),building=sum(right,'area'),pages=[];
  const warnings=[];if(shop&&!rooms.length)warnings.push('등록된 동·호실이 없어 분양·전용면적은 빈칸입니다.');
  if(shop&&left.some(x=>x.area===null))warnings.push('전용·공용면적이 모두 입력된 호실만 분양면적을 계산합니다.');
@@ -119,5 +128,5 @@ async function download(plan){
  }
  const bytes=build(plan,images),url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');a.href=url;a.download=plan.address.replace(/[\\/:*?"<>|]/g,'_').slice(0,80)+'_매매물건장.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
-root.LMFixedSheet={load,infer,plan,html,build,download};if(typeof module!=='undefined')module.exports=root.LMFixedSheet;
+root.LMFixedSheet={load,infer,smallUse,plan,html,build,download};if(typeof module!=='undefined')module.exports=root.LMFixedSheet;
 })(typeof window==='undefined'?globalThis:window);
