@@ -2,6 +2,7 @@
 async function lmCommitCustomerChange(beforeText){
  const desiredText=JSON.stringify(db);let locked=false,committed=false;
  try{
+  if(typeof lmIsLocal==='function'&&lmIsLocal()){await lmQueueDurableSave();return {ok:true,version:cloudVersion,localOnly:true};}
   if(cloudBusy||cloudPending||lmSyncSaving||lmSyncBusy)throw Error('다른 저장이 진행 중입니다. 잠시 후 다시 처리해 주세요.');
   cloudBusy=true;lmSyncBusy=true;locked=true;
   const journal=await lmSyncRows();
