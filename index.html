@@ -1040,12 +1040,11 @@ function lmInitUnifiedCustomerList(){
    }
    try{
     const payload=JSON.stringify(db);
-    const result=await cloudRPC('lm_cloud_write',{p_expected_version:cloudVersion,p_data:JSON.parse(payload)});
+    const result=await lmCommitCustomerChange(before);
     if(!result||result.ok!==true)throw Error('다른 직원이 먼저 저장했습니다. 동기화 후 다시 시도해 주세요.');
-    cloudVersion=result.version;cloudLastSaved=payload;lmAuditBaseline=lmAuditSnapshot();
     showSaveStatus('고객 분류 저장 완료 · '+r.name+' → '+value,false);
     await search();
-   }catch(e){db=JSON.parse(before);alert('분류 저장 실패: '+e.message);renderRows();}
+   }catch(e){lmCustomerRecoveryNotice(e);renderRows();}
   });
   refreshButtons();
   $u('cUnifiedBody').querySelectorAll('[data-unified-open]').forEach(b=>b.onclick=()=>rows[Number(b.dataset.unifiedOpen)]?.open());
@@ -1221,10 +1220,10 @@ function lmInitUnifiedCustomerList(){
   const before=JSON.stringify(db);const overrides=overrideMap();
   for(const r of picked){if(r.source==='등록 고객'){const c=get('customers',r.customerId);if(c)c.category=done?'완료고객':(c.category==='완료고객'||c.category==='완료'?'미분류':c.category)}else if(done)overrides[r.key]={done:true,at:new Date().toISOString()};else delete overrides[r.key]}
   const payload=JSON.stringify(db);try{
-   const result=await cloudRPC('lm_cloud_write',{p_expected_version:cloudVersion,p_data:JSON.parse(payload)});
+   const result=await lmCommitCustomerChange(before);
    if(!result||result.ok!==true)throw Error('다른 직원이 먼저 저장했습니다. 동기화 후 다시 시도해 주세요.');
-   cloudVersion=result.version;cloudLastSaved=payload;lmAuditBaseline=lmAuditSnapshot();selected.clear();showSaveStatus(`고객 ${picked.length}건 완료 상태 저장 성공 · 서버 버전 ${cloudVersion}`,false);await search();
-  }catch(e){db=JSON.parse(before);alert('완료 상태 저장 실패: '+e.message+'\n변경 내용은 취소되었습니다.');showSaveStatus('완료 상태 저장 실패: '+e.message,true)}
+   selected.clear();showSaveStatus(`고객 ${picked.length}건 완료 상태 저장 성공 · 서버 버전 ${cloudVersion}`,false);await search();
+  }catch(e){lmCustomerRecoveryNotice(e,()=>document.getElementById(done?'cUnifiedComplete':'cUnifiedUndo')?.click());showSaveStatus('완료 상태 저장 실패: '+e.message,true)}
  };
  $u('cUnifiedComplete').onclick=()=>void changeCompletion(true);
  $u('cUnifiedUndo').onclick=()=>void changeCompletion(false);
@@ -1247,10 +1246,10 @@ function lmInitUnifiedCustomerList(){
   db.properties.forEach(p=>{if(idSet.has(p.customerId))p.customerId=''});
   try{
    const payload=JSON.stringify(db);
-   const result=await cloudRPC('lm_cloud_write',{p_expected_version:cloudVersion,p_data:JSON.parse(payload)});
+   const result=await lmCommitCustomerChange(before);
    if(!result||result.ok!==true)throw Error('서버 버전 충돌이 발생했습니다. 동기화 후 다시 시도해 주세요.');
-   cloudVersion=result.version;cloudLastSaved=payload;lmAuditBaseline=lmAuditSnapshot();selected.clear();showSaveStatus(`${picked.length}건 ${deletedView()?'복원':'삭제'} 완료 · 서버 버전 ${cloudVersion}`,false);await search();
-  }catch(e){db=JSON.parse(before);alert('삭제 저장 실패: '+e.message+'\n서버 데이터는 삭제되지 않았습니다.');showSaveStatus('고객 삭제 실패: '+e.message,true)}
+   selected.clear();showSaveStatus(`${picked.length}건 ${deletedView()?'복원':'삭제'} 완료 · 서버 버전 ${cloudVersion}`,false);await search();
+  }catch(e){lmCustomerRecoveryNotice(e,()=>document.getElementById('cUnifiedDelete')?.click());showSaveStatus('고객 삭제 실패: '+e.message,true)}
  };
 
  const resetSearch=()=>{page=0;finished=false;loading=false;void search(false)};
@@ -2645,7 +2644,7 @@ function lmEnsureRecoveryHistoryButton(){let history=document.getElementById('lm
 }
 async function lmSafeClearIfSame(data){const d=await lmSafeOpen();try{await new Promise((resolve,reject)=>{const tx=d.transaction(LM_SAFE_STORE,'readwrite'),store=tx.objectStore(LM_SAFE_STORE),r=store.get('pending');r.onsuccess=()=>{if(r.result?.data===data)store.delete('pending')};tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}finally{d.close()}}
 function lmSafeDownload(snapshot){const b=new Blob([JSON.stringify({format:'landmaker-recovery',savedAt:snapshot.at,reason:snapshot.reason,version:snapshot.version,data:JSON.parse(snapshot.data)})],{type:'application/json'}),url=URL.createObjectURL(b),a=document.createElement('a');a.href=url;a.download='landmaker-recovery-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
-async function lmSafeNotify(){try{const snapshot=await lmSafeGet();if(!snapshot)return;const el=document.createElement('div');el.id='lmRecoveryNotice';el.style.cssText='position:fixed;bottom:12px;left:12px;right:12px;z-index:2147483647;background:#fff4dc;border:2px solid #ad6700;border-radius:10px;padding:12px;color:#322400;box-shadow:0 4px 22px #0003;font:14px sans-serif';el.innerHTML='<b>⚠ PC에 보관된 미확인 저장 자료가 있습니다.</b> 서버 자료를 덮어쓰지 않았습니다. 복구용 JSON을 먼저 다운로드해 보관하세요. <button type="button" id="lmRecoveryDownload">복구 파일 다운로드</button> <button type="button" id="lmRecoveryDismiss">닫기</button>';document.body.appendChild(el);el.querySelector('#lmRecoveryDownload').onclick=()=>lmSafeDownload(snapshot);el.querySelector('#lmRecoveryDismiss').onclick=()=>el.remove()}catch(e){console.warn('복구 자료 확인 실패',e)}}
+async function lmSafeNotify(){try{const snapshot=await lmSafeGet();if(!snapshot)return;const el=document.createElement('div');el.id='lmRecoveryNotice';el.style.cssText='position:fixed;bottom:12px;left:12px;right:12px;z-index:2147483647;background:#fff4dc;border:2px solid #ad6700;border-radius:10px;padding:12px;color:#322400;box-shadow:0 4px 22px #0003;font:14px sans-serif';el.innerHTML='<b>⚠ PC에 보관된 미확인 저장 자료가 있습니다.</b> 서버 자료를 덮어쓰지 않았습니다. 복구용 JSON을 먼저 다운로드해 보관하세요. <button type="button" id="lmRecoveryDownload">복구 파일 다운로드</button> <button type="button" id="lmRecoveryResume">PC 자료 보관 · 최신자료로 계속</button> <button type="button" id="lmRecoveryDismiss">닫기</button>';document.body.appendChild(el);el.querySelector('#lmRecoveryDownload').onclick=()=>lmSafeDownload(snapshot);el.querySelector('#lmRecoveryResume').onclick=()=>void lmResumeWithLatest();el.querySelector('#lmRecoveryDismiss').onclick=()=>el.remove()}catch(e){console.warn('복구 자료 확인 실패',e)}}
 
 let lmWriteSerial=Promise.resolve();
 async function cloudRPC(fn,body){if(fn==='lm_cloud_write'&&lmIsLocal()){db={...empty(),...body.p_data};await lmQueueDurableSave();return {ok:true,version:cloudVersion,localOnly:true}}if(fn==='lm_cloud_write'){const previous=lmWriteSerial;let release;lmWriteSerial=new Promise(resolve=>release=resolve);await previous;try{return await lmCloudWriteProtected(body)}finally{release()}}return await lmCloudReadOnly(fn,body)}
@@ -2669,7 +2668,7 @@ function lmHasUnsavedInput(state){
 
 function lmActiveUnsavedForm(){return lmHasUnsavedInput({customerDirty:lmFormDirty,customerForm:document.querySelector('#customerForm'),propertyDirty:window.lmPropertyDraftDirty,propertyForm:document.querySelector('#propertyForm'),quickSource:tab==='quick'&&document.querySelector('#source')?.value.trim()})}
 async function loadCloud(){let notice='';const pending=await lmSafeGet().catch(()=>{notice='PC 복구자료 확인을 보류했습니다. 기존 PC 자료는 유지됩니다.';return null});const j=await cloudRPC('lm_cloud_read',{});if(!j||typeof j.version!=='number'||!j.data)throw Error('공동 데이터 읽기 응답이 올바르지 않습니다.');if(pending){let local;try{local=JSON.parse(pending.data)}catch{}if(!local||!lmSyncEngine.equal(local,j.data)){try{await lmSafeArchivePending(pending);notice='미확인 PC 자료는 별도 보관했습니다. 서버 최신 자료로 업무를 계속할 수 있습니다.';}catch{notice='미확인 PC 자료는 원래 위치에 보존했습니다. 복구자료 확인과 별개로 로그인은 진행합니다.';}}else{try{await lmSafeArchivePending(pending)}catch{}}}db={...empty(),...j.data};cloudVersion=j.version;cloudLastSaved=JSON.stringify(db);lmAuditBaseline=lmAuditSnapshot();cloudReady=true;showSaveStatus('공동 데이터 불러오기 완료 · 버전 '+cloudVersion,false);await window.lmCacheSnapshot(db,cloudVersion).catch(e=>lmLocalStatus('PC 자동저장 실패: '+e.message));for(const row of await lmSyncRows().catch(()=>{notice='PC 전송기록 확인을 보류했습니다. 서버 자료로 로그인했습니다.';return []}))if(!row.checkpointed&&['pending','conflict'].includes(row.status)&&row.operation.target!=='table')lmSyncEngine.apply(db,row.operation);lmSyncTail=lmSyncEngine.clone(db);lmAuditBaseline=lmAuditSnapshot();void lmSyncFlush();void window.lmEnsureOfflineArchives();if(cloudPoll){clearInterval(cloudPoll);cloudPoll=null;} if(notice)lmRecoveryNonblockingNotice(notice); /* v14.2: 자동 서버 읽기/화면 재생성 제거 */}
-async function lmManualSync(){const recovery=await lmSafeGet().catch(()=>({}));if(recovery){alert('PC에 미확인 저장 자료가 있습니다. 먼저 화면 아래의 복구 파일을 다운로드해 보관해 주세요. 데이터 손실 방지를 위해 수동 동기화를 차단합니다.');await lmSafeNotify();return;}const btn=document.getElementById('lmManualSync');if(!authToken||!cloudReady){alert('로그인 후 동기화할 수 있습니다.');return;}if(cloudBusy||cloudPending){alert('서버 저장 중입니다. 완료된 뒤 다시 눌러 주세요.');return;}if(lmSyncSaving){alert('이 PC에 저장 중입니다. 저장 완료 후 다시 눌러 주세요.');return;}const journal=await lmSyncRows();if(journal.some(x=>x.status==='conflict')){alert('PC 저장은 되어 있으나 다른 직원의 수정과 충돌한 자료가 있습니다. 저장·동기화 관리에서 충돌 내용을 확인해 주세요.');return;}if(journal.some(x=>x.status==='pending')){alert('이 PC에는 저장되었습니다. 서버 전송 대기 자료가 있어 최신 자료 불러오기를 잠시 보류합니다. 저장·동기화 관리에서 전송 상태를 확인해 주세요.');return;}const localChanges=JSON.stringify(db)!==cloudLastSaved&&!(lmSyncTail&&lmSyncEngine.equal(db,lmSyncTail));const hasDraft=lmActiveUnsavedForm();if(localChanges||hasDraft){alert('저장되지 않은 변경사항 또는 작성 중인 입력란이 있습니다. 자료 보호를 위해 동기화를 중단했습니다. 저장을 완료한 후 다시 시도해 주세요.');return;}if(!confirm('서버의 최신 공동자료를 불러오고 현재 화면을 갱신할까요?'))return;if(btn){btn.disabled=true;btn.textContent='동기화 중…';}try{await loadCloud();lmFormDirty=false;editing=null;close();render();showSaveStatus('수동 동기화 완료 · 서버 버전 '+cloudVersion,false);}catch(e){alert('동기화 실패: '+e.message);}finally{if(btn){btn.disabled=false;btn.textContent='↻ 동기화';}}}
+async function lmManualSync(){const recovery=await lmSafeGet().catch(()=>({}));if(recovery){await lmResumeWithLatest();return;}const btn=document.getElementById('lmManualSync');if(!authToken||!cloudReady){alert('로그인 후 동기화할 수 있습니다.');return;}if(cloudBusy||cloudPending){alert('서버 저장 중입니다. 완료된 뒤 다시 눌러 주세요.');return;}if(lmSyncSaving){alert('이 PC에 저장 중입니다. 저장 완료 후 다시 눌러 주세요.');return;}const journal=await lmSyncRows();if(journal.some(x=>x.status==='conflict')){alert('PC 저장은 되어 있으나 다른 직원의 수정과 충돌한 자료가 있습니다. 저장·동기화 관리에서 충돌 내용을 확인해 주세요.');return;}if(journal.some(x=>x.status==='pending')){alert('이 PC에는 저장되었습니다. 서버 전송 대기 자료가 있어 최신 자료 불러오기를 잠시 보류합니다. 저장·동기화 관리에서 전송 상태를 확인해 주세요.');return;}const localChanges=JSON.stringify(db)!==cloudLastSaved&&!(lmSyncTail&&lmSyncEngine.equal(db,lmSyncTail));const hasDraft=lmActiveUnsavedForm();if(localChanges||hasDraft){alert('저장되지 않은 변경사항 또는 작성 중인 입력란이 있습니다. 자료 보호를 위해 동기화를 중단했습니다. 저장을 완료한 후 다시 시도해 주세요.');return;}if(!confirm('서버의 최신 공동자료를 불러오고 현재 화면을 갱신할까요?'))return;if(btn){btn.disabled=true;btn.textContent='동기화 중…';}try{await loadCloud();lmFormDirty=false;editing=null;close();render();showSaveStatus('수동 동기화 완료 · 서버 버전 '+cloudVersion,false);}catch(e){alert('동기화 실패: '+e.message);}finally{if(btn){btn.disabled=false;btn.textContent='↻ 동기화';}}}
 
 
 /* v15 experimental safe three-way reconciliation. Never overwrite an ambiguous change. */
@@ -2695,7 +2694,7 @@ function lmSafeThreeWay(base,local,remote){
    const ids=new Set([...bm.keys(),...lm.keys(),...rm.keys()]);const out=[];
    for(const id of ids){const value=pick(bm.has(id)?bm.get(id):absent,lm.has(id)?lm.get(id):absent,rm.has(id)?rm.get(id):absent,key+'/'+id);if(value!==absent)out.push(value)}
    merged[key]=out;
-  }else if(key==='customerCompletionOverrides'&&[b,l,r].every(x=>x&&typeof x==='object'&&!Array.isArray(x))){
+  }else if(['customerCompletionOverrides','customerCategoryOverrides'].includes(key)&&[b,l,r].every(x=>x&&typeof x==='object'&&!Array.isArray(x))){
    const obj={...r};for(const k of new Set([...Object.keys(b),...Object.keys(l),...Object.keys(r)])){
     const value=pick(Object.hasOwn(b,k)?b[k]:absent,Object.hasOwn(l,k)?l[k]:absent,Object.hasOwn(r,k)?r[k]:absent,key+'/'+k);
     if(value===absent)delete obj[k];else obj[k]=value;
@@ -4077,6 +4076,8 @@ lmBindAccessAndMandates(document.querySelector('#propertyForm'));
 <script src="ui/property-sheet-fixed.js?v=20261119g"></script>
 <script src="ui/property-sheet.js?v=20261119f"></script>
 
+<script src="ui/customer-recovery.js?v=20261119a"></script>
+<script src="ui/customer-recovery-integration.js?v=20261119a"></script>
 <script src="ui/navigation.js?v=20261119a"></script>
 
 <link rel="stylesheet" href="document-ui/documents.css?v=20261119a">
