@@ -63,3 +63,8 @@
  .lm-dashboard-columns [data-schedule]{display:block;width:100%;text-align:left;font-size:16px!important;line-height:1.65!important;padding:12px!important}
  .lm-dashboard-columns .panel>p{line-height:1.8;font-size:14px}
 }
+
+@media(max-width:767px){
+ #lmRawRows tr:before{content:attr(data-mobile-address);display:block;flex:0 0 100%;order:-10;box-sizing:border-box;font-size:20px;font-weight:750;line-height:1.5;color:#173e48;overflow-wrap:anywhere;padding-bottom:8px;border-bottom:1px solid #e0eaed;margin-bottom:2px}
+ #lmRawRows tr td[data-property-col="지역"],#lmRawRows tr td[data-property-col="번지"]{display:none!important}
+}
