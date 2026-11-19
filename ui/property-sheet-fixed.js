@@ -10,7 +10,7 @@ const date=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(n
 const base=typeof document==='undefined'?'':new URL('./templates/sale-fixed.json',document.currentScript?.src||document.baseURI).href;
 let pending;
 function load(){return pending||(pending=fetch(base).then(r=>{if(!r.ok)throw Error('고정 엑셀 양식을 불러오지 못했습니다. 새로고침 후 다시 열어주세요.');return r.json();}).catch(e=>{pending=null;throw e;}));}
-function infer(p){return /토지/.test(p.propertyKind||'')?'land':/상가|사무실|지식산업|지산/.test(p.propertyKind||'')?'shop':/주택|아파트|빌라/.test(p.propertyKind||'')?'home':'factory';}
+function infer(p){return /토지/.test(p.propertyKind||'')?'land':/상가|사무실|지식산업|지산/.test(p.propertyKind||'')?(p.unitRooms?.length?'shop':'commercial'):/주택|아파트|빌라/.test(p.propertyKind||'')?'home':'factory';}
 function smallUse(value){
  let text=String(value||'').trim();
  // Keep the recorded specific use; never infer one from a broad legal category.
@@ -21,13 +21,13 @@ function smallUse(value){
  return text;
 }
 function plan(m,o,bundle){
- const key=o.template||infer(m.p),template=bundle.sheets[key];if(!template)throw Error('지원하지 않는 고정 양식입니다.');
+ const requested=o.template||infer(m.p),key=requested==='shop'&&!m.p.unitRooms?.length?'commercial':requested,template=bundle.sheets[key==='commercial'?'factory':key];if(!template)throw Error('지원하지 않는 고정 양식입니다.');
  const p=m.p,parcels=m.parcels||[],rooms=p.unitRooms||[],shop=key==='shop';
  const floors=(p.buildings||[]).flatMap(b=>(b.levels?.length?b.levels:[{levelName:b.floors,levelUse:b.buildingUse,sqm:b.floorSqm}]).filter(l=>!b.perFloorSale||l.forSale).map(l=>({name:smallUse(l.levelUse||b.buildingUse),area:number(l.sqm),floor:l.levelName||''})));
  const left=shop?rooms.map(u=>({name:[u.address,u.dong,u.ho].filter(Boolean).join(' · '),area:number(u.exclusiveSqm)!==null&&number(u.commonSqm)!==null?Number(u.exclusiveSqm)+Number(u.commonSqm):null,detail:u.floor||''})):parcels.map(x=>({name:[x.san?'산':'',x.main].filter(Boolean).join(' ')+(x.sub?'-'+x.sub:''),area:number(x.sqm),detail:x.landUse||''}));
  const right=key==='land'?[]:shop?rooms.map(u=>({name:[u.dong,u.ho,smallUse(u.exclusiveUse||u.use)].filter(Boolean).join(' · '),area:number(u.exclusiveSqm),floor:u.floor||''})):floors;
  const total=Math.max(1,Math.ceil(Math.max(left.length,right.length)/9)),land=sum(left,'area'),building=sum(right,'area'),pages=[];
- const warnings=[];if(shop&&!rooms.length)warnings.push('등록된 동·호실이 없어 분양·전용면적은 빈칸입니다.');
+ const warnings=[];if(requested==='shop'&&key==='commercial')warnings.push('개별 호실이 없어 상가 건물 전체의 토지·층별 정보로 표시합니다.');
  if(shop&&left.some(x=>x.area===null))warnings.push('전용·공용면적이 모두 입력된 호실만 분양면적을 계산합니다.');
  if(left.some(x=>x.area===null)||right.some(x=>x.area===null))warnings.push('면적 미입력 항목이 있어 해당 합계는 확정하지 않습니다.');
  for(let page=0;page<total;page++){
@@ -45,7 +45,7 @@ function plan(m,o,bundle){
    if(key!=='land'){put('E'+row,r?.name||'');put('F'+row,r?.area);put('G'+row,r?.area===null||!r?'':r.area/3.3058,'IF(ISNUMBER(F'+row+'),F'+row+'/3.3058,"")');put('H'+row,r?.floor||'');}
   }
   const approval=(p.buildings||[]).map(x=>x.approvalDate).filter(Boolean).join(' / ');
-  if(key==='factory'){put('J6',p.hoist);put('J7',p.electricity);put('J8',number(p.deposit));put('J9',number(p.rent));put('J10',approval);}
+  if(key==='factory'||key==='commercial'){put('J6',p.hoist);put('J7',p.electricity);put('J8',number(p.deposit));put('J9',number(p.rent));put('J10',approval);}
   if(key==='land'){put('J5',[...new Set(parcels.map(x=>x.landUse).filter(Boolean))].join(' / '));put('J6',p.vehicle);put('J7',p.electricity);}
   if(key==='home'){put('J6',number(p.deposit));put('J7',number(p.rent));put('J8',approval);}
   if(key==='shop'){put('J6',p.electricity);put('J7',number(p.deposit));put('J8',number(p.rent));put('J9',approval);}
