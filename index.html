@@ -4047,7 +4047,7 @@ const lmRestoreBeforeMandates=lmRestorePropertyDraft;
 lmRestorePropertyDraft=function(){const wasDirty=window.lmPropertyDraftDirty;lmRestoreBeforeMandates();if(wasDirty||!window.lmPropertyDraftDirty)return;try{const d=JSON.parse(localStorage.getItem(LM_PROPERTY_DRAFT_KEY)||'null'),f=document.querySelector('#propertyForm');if(!f||!d)return;if(Array.isArray(d.mandates)){const area=f.querySelector('[data-mandate-rows]');if(area){area.innerHTML=d.mandates.map(lmMandateRow).join('');area.querySelectorAll('[data-m]').forEach(e=>e.name='mandate_'+e.dataset.m);lmRefreshMandateLinks(f)}}if(Array.isArray(d.accessSources)){f.querySelector('[name=lmAccessSourcesDraft]').value=JSON.stringify(d.accessSources);f.querySelector('#lmAccessImport').dispatchEvent(new Event('lm-access-redraw'))}}catch(e){console.warn('의뢰인 임시자료 복원 실패',e)}};
 lmBindAccessAndMandates(document.querySelector('#propertyForm'));
 </script>
-<link rel="stylesheet" href="photo-ui/photos.css">
-<script src="photo-ui/config.js"></script>
-<script src="photo-ui/client.js"></script>
-<script src="photo-ui/integration.js"></script>
+<link rel="stylesheet" href="photo-ui/photos.css?v=20261119a">
+<script src="photo-ui/config.js?v=20261119a"></script>
+<script src="photo-ui/client.js?v=20261119a"></script>
+<script src="photo-ui/integration.js?v=20261119a"></script>
