@@ -1,0 +1,11 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),{JSDOM}=require('jsdom');const d=new JSDOM('');global.DOMParser=d.window.DOMParser;global.XMLSerializer=d.window.XMLSerializer;
+const fixed=require('../ui/property-sheet-fixed.js'),clean=require('../ui/property-sheet-clean.js'),{model}=require('../ui/property-sheet.js'),bundle=JSON.parse(fs.readFileSync('ui/templates/sale-clean.json'));
+test('clean ledger splits contact from title, widens land-use/building columns and exports a valid A4 layout',()=>{
+ const p={propertyKind:'공장',salePrice:'350000',parcels:[{dong:'예시동',main:'123',sub:'4',sqm:'1404',landUse:'목장용지'},{dong:'예시동',main:'123',sub:'5',sqm:'301',landUse:'목장용지'}],buildings:[{approvalDate:'2022-05-10',levels:[{levelUse:'제2종근린생활시설(제조업소)',sqm:'352.8',levelName:'1층'},{levelUse:'농수산물창고',sqm:'313.06',levelName:'1층'}]}]},plan=clean.plan(model(p,'sale'),{office:'광장공인중개사사무소',contact:'02-2060-5500 / 010-2382-5600'},bundle),c=plan.pages[0].cells;
+ assert.equal(c.A1.v,'광장공인중개사사무소');assert.equal(c.I1.v,'02-2060-5500 / 010-2382-5600');assert.equal(c.A4.v,350000);assert.equal(c.G8.v,'제조업소');assert.equal(c.D8.v,'목장용지');assert.ok(c.M1.f.includes('E8:E16'));assert.ok(c.O1.f.includes('K8:K16'));assert.equal(plan.columns,12);assert.equal(plan.printRows,37);assert.equal(plan.photoCell,'A24');assert.ok(plan.template.widths[3]>60);assert.ok(plan.template.merges.some(m=>m.c1===7&&m.c2===9&&m.r1===8));assert.ok(fixed.html(plan).includes('매물 사진 · 위치도'));
+ const bytes=fixed.build(plan);assert.ok(bytes.length>1000);assert.ok(new TextDecoder().decode(bytes).includes('$A$1:$L$37'));
+});
+test('clean land and shop preserve their distinct meanings and missing area stays unknown',()=>{
+ const land=clean.plan(model({propertyKind:'토지',vehicle:'5톤',parcels:[{main:'1',sqm:'100',landUse:'대'}]},'sale'),{},bundle);assert.equal(land.pages[0].cells.G4.v,'해당 없음');assert.equal(land.pages[0].cells.J9.v,'5톤');
+ const shop=clean.plan(model({propertyKind:'상가',unitRooms:[{ho:'101호',exclusiveSqm:'60',commonSqm:''}]},'sale'),{},bundle);assert.equal(shop.pages[0].cells.A8.v,'101호');assert.equal(shop.pages[0].cells.D4.v,'미입력');assert.equal(shop.pages[0].cells.O1.v,60);assert.ok(shop.warnings.length);
+});

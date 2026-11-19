@@ -59,11 +59,11 @@ function html(plan){
  const t=plan.template,width=t.widths.reduce((a,b)=>a+b,0),scale=718/width,covered=new Set(),merges={};
  for(const m of t.merges){merges[String.fromCharCode(64+m.c1)+m.r1]=m;for(let r=m.r1;r<=m.r2;r++)for(let c=m.c1;c<=m.c2;c++)if(r!==m.r1||c!==m.c1)covered.add(String.fromCharCode(64+c)+r);}
  const images=[plan.photo,plan.map].filter(Boolean);
- const pages=plan.pages.map(page=>'<main class="sheet"><table><colgroup>'+t.widths.map(w=>'<col style="width:'+w/width*100+'%">').join('')+'</colgroup><tbody>'+t.heights.map((height,i)=>'<tr style="height:'+height*4/3*scale+'px">'+Array.from({length:10},(_,j)=>{
+ const pages=plan.pages.map(page=>'<main class="sheet"><table><colgroup>'+t.widths.map(w=>'<col style="width:'+w/width*100+'%">').join('')+'</colgroup><tbody>'+t.heights.map((height,i)=>'<tr style="height:'+height*4/3*scale+'px">'+Array.from({length:plan.columns||10},(_,j)=>{
   const ref=String.fromCharCode(65+j)+(i+1);if(covered.has(ref))return '';const cell=t.cells[ref]||{},merge=merges[ref],value=Object.hasOwn(page.cells,ref)?page.cells[ref].v:typeof cell.v==='string'&&cell.v.startsWith('=')?'':cell.v;
-  const imageRegion=ref==='A15'||plan.key==='land'&&ref==='E3';
+  const imageRegion=ref===(plan.photoCell||'A15')||!plan.clean&&plan.key==='land'&&ref==='E3';
   let content=xml(format(value,cell.fmt||''));
-  if(imageRegion){const urls=ref==='E3'?[plan.photo].filter(Boolean):images;content='<div class="pictures">'+(urls.length?urls.map(url=>'<img src="'+xml(url)+'" alt="첨부 사진">').join(''):'<span>위치·항공사진 또는 매물 사진을 첨부하세요</span>')+'</div>';}
+  if(imageRegion){const urls=!plan.clean&&ref==='E3'?[plan.photo].filter(Boolean):images;content='<div class="pictures">'+(urls.length?urls.map(url=>'<img src="'+xml(url)+'" alt="첨부 사진">').join(''):'<span>위치·항공사진 또는 매물 사진을 첨부하세요</span>')+'</div>';}
   const h=merge?t.heights.slice(merge.r1-1,merge.r2).reduce((a,b)=>a+b,0)*4/3*scale:height*4/3*scale;
   let style=(cell.css||'').replace(/font-size:([\d.]+)pt/,(_,size)=>'font-size:'+(Number(size)*4/3*scale)+'px');
   if(merge){const right=t.cells[String.fromCharCode(64+merge.c2)+merge.r1]?.css||'',bottom=t.cells[String.fromCharCode(64+merge.c1)+merge.r2]?.css||'';for(const [edge,css] of [['right',right],['bottom',bottom]]){const border=css.match(new RegExp('border-'+edge+':[^;]+'));if(border)style+=';'+border[0];}}
@@ -80,6 +80,7 @@ function build(plan,images=[]){
   const id=i+1,doc=new root.DOMParser().parseFromString(plan.template.xml,'application/xml'),sheet=doc.documentElement;
   if(doc.getElementsByTagName('parsererror').length)throw Error('엑셀 원본 양식 해석 실패');
   const sheetData=doc.getElementsByTagNameNS(ns,'sheetData')[0];
+  if(plan.clean){doc.getElementsByTagNameNS(ns,'dimension')[0]?.setAttribute('ref','A1:P37');const cols=doc.getElementsByTagNameNS(ns,'cols')[0],hidden=doc.createElementNS(ns,'col');hidden.setAttribute('min','13');hidden.setAttribute('max','16');hidden.setAttribute('hidden','1');hidden.setAttribute('width','10');cols.append(hidden);}
   for(const [ref,value] of Object.entries(page.cells)){
    let cell=[...doc.getElementsByTagNameNS(ns,'c')].find(x=>x.getAttribute('r')===ref);
    if(!cell){const rowNumber=ref.match(/\d+$/)[0];let row=[...sheetData.children].find(x=>x.getAttribute('r')===rowNumber);if(!row){row=doc.createElementNS(ns,'row');row.setAttribute('r',rowNumber);sheetData.append(row);}cell=doc.createElementNS(ns,'c');cell.setAttribute('r',ref);row.append(cell);}
@@ -105,7 +106,7 @@ function build(plan,images=[]){
    overrides.push('<Override PartName="/xl/drawings/drawing'+id+'.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>');
   }
   files.push(['xl/worksheets/sheet'+id+'.xml',new root.XMLSerializer().serializeToString(doc)]);
-  sheets.push('<sheet name="'+page.name+'" sheetId="'+id+'" r:id="rId'+id+'"/>');defined.push('<definedName name="_xlnm.Print_Area" localSheetId="'+i+'">\''+page.name+'\'!$A$1:$J$33</definedName>');
+  sheets.push('<sheet name="'+page.name+'" sheetId="'+id+'" r:id="rId'+id+'"/>');defined.push('<definedName name="_xlnm.Print_Area" localSheetId="'+i+'">\''+page.name+'\'!$A$1:$'+String.fromCharCode(64+(plan.columns||10))+'$'+(plan.printRows||33)+'</definedName>');
   relationships.push('<Relationship Id="rId'+id+'" Type="'+rel+'/worksheet" Target="worksheets/sheet'+id+'.xml"/>');overrides.push('<Override PartName="/xl/worksheets/sheet'+id+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
  }
  images.forEach((img,j)=>files.push(['xl/media/image'+(j+1)+'.jpg',img.bytes]));
@@ -115,8 +116,8 @@ function build(plan,images=[]){
 }
 async function download(plan){
  const urls=[plan.photo,plan.map].filter(Boolean),images=[];
- const regions=urls.map((url,i)=>({url,start:14+Math.floor(19*i/urls.length),end:14+Math.floor(19*(i+1)/urls.length),left:0,right:10}));
- if(plan.key==='land'&&plan.photo)regions.push({url:plan.photo,start:2,end:13,left:4,right:8});
+ const regions=urls.map((url,i)=>({url,start:(plan.photoStart??14)+Math.floor(((plan.photoEnd??33)-(plan.photoStart??14))*i/urls.length),end:(plan.photoStart??14)+Math.floor(((plan.photoEnd??33)-(plan.photoStart??14))*(i+1)/urls.length),left:0,right:plan.columns||10}));
+ if(!plan.clean&&plan.key==='land'&&plan.photo)regions.push({url:plan.photo,start:2,end:13,left:4,right:8});
  for(const {url,start,end,left,right} of regions){
   if(!url.startsWith('blob:'))throw Error('현재 창에서 불러온 사진만 엑셀에 첨부할 수 있습니다.');
   const r=await fetch(url);if(!r.ok)throw Error('첨부 사진 읽기 실패');const bitmap=await createImageBitmap(await r.blob());

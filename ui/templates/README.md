@@ -1,5 +1,13 @@
 # Fixed sale ledger layouts
 
+`sale-clean.json` is the newer default layout, authored with Artifact Tool after
+the user requested a cleaner redesign. It separates brokerage title and phone,
+uses four summary cards, wider land-use/building-use columns, nine detail rows,
+equipment/deposit/rent/date, memo and photo area. Its print area is A1:L37;
+M1:P1 are hidden calculation helpers. The same layout drives preview, print and
+Excel export. `sale-clean-preview.png` shows fictional example data only.
+The original supplied layout remains available under the layout selector.
+
 `sale-fixed.json` contains the four first-page sale layouts from the user's
 `A.매매-신규.xlsx`: factory/warehouse, land, home, and shop/knowledge-industry center.
 The template was imported and normalized using Artifact Tool. The JSON records
