@@ -11,7 +11,7 @@ export class NcloudStorage {
   this.accessKey=accessKey;this.secretKey=secretKey;this.bucket=bucket;this.fetcher=fetcher;this.clock=clock;
  }
  async request(method,key,body,metadata={}){
-  if(!/^photos\/[a-f0-9-]+\/(full|thumb)\.jpg$/.test(key))throw Error('사진 저장 경로 오류');
+  if(!/^(?:photos\/[a-f0-9-]+\/(full|thumb)\.jpg|documents\/[a-f0-9-]+\/original\.(xlsx|xls|pdf|docx|doc|pptx|ppt|hwp|hwpx))$/.test(key))throw Error('사진 저장 경로 오류');
   const host='kr.object.ncloudstorage.com',path='/'+segment(this.bucket)+'/'+key.split('/').map(segment).join('/');
   const timestamp=this.clock().toISOString().replace(/[:-]|\.\d{3}/g,''),date=timestamp.slice(0,8),payload=await sha256(body||new Uint8Array());
   const headers={'host':host,'x-amz-content-sha256':payload,'x-amz-date':timestamp};
