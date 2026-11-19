@@ -1,0 +1,5 @@
+photo-service/node_modules/
+photo-service/.wrangler/
+photo-service/.dev.vars
+photo-service/.env*
+photo-service/test-output/
