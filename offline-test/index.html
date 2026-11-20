@@ -1576,7 +1576,7 @@ function lmOpenOwnerTimeline(o){
  if(ownerCustomers.length){const bar=document.createElement('div');bar.className='row';for(const c of ownerCustomers){const b=document.createElement('button');b.type='button';b.textContent=ownerCustomers.length>1?'고객 선택 · '+c.name+' · '+(c.phone||c.id):'고객 상세 · 상담 입력';b.onclick=()=>openCustomer(c.id);bar.appendChild(b);}host.prepend(bar);}
  else if(o.code){const b=document.createElement('button');b.type='button';b.textContent='소유주를 고객으로 연결 · 상담 입력';b.onclick=()=>{if((!authToken||!cloudReady)&&!window.lmOfflineEditing){alert('직원 로그인과 공동저장 연결이 필요합니다.');return;}const ids=lmSyncSaleOwnerCustomers({type:'매매',landOwners:[{name:o.name,personCode:o.code,phone:o.phone,address:o.address}],staff:typeof authStaffName==='undefined'?'':authStaffName});if(ids.length&&save())openCustomer(ids[0]);};host.prepend(b);}
  const customerIds=new Set(db.customers.filter(c=>c.personCode&&c.personCode===o.code).map(c=>c.id));const records=db.records.filter(r=>customerIds.has(r.customerId)||r.personCode===o.code);
- host.innerHTML+='<h3>인물코드로 연결된 상담</h3>'+(records.map(r=>'<p>'+esc(r.date)+' · '+esc(r.content)+'</p>').join('')||'<p>연결된 상담 없음</p>');host.querySelectorAll('[data-owner-open]').forEach(b=>b.onclick=()=>openPropertyEditModal(b.dataset.ownerOpen));
+ host.insertAdjacentHTML('beforeend','<h3>인물코드로 연결된 상담</h3>'+(records.map(r=>'<p>'+esc(r.date)+' · '+esc(r.content)+'</p>').join('')||'<p>연결된 상담 없음</p>'));host.querySelectorAll('[data-owner-open]').forEach(b=>b.onclick=()=>openPropertyEditModal(b.dataset.ownerOpen));
 }
 
 function lmOpenOwnerByCode(code){const o=lmOwnerDirectory().find(x=>x.code===code);if(o)lmOpenOwnerTimeline(o);else alert("연결된 소유 기록이 없습니다.")}

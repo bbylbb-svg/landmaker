@@ -12,3 +12,12 @@ for(const file of ['index.html','offline-test/index.html'])test(file+': sale own
  assert.ok(source.includes('if(submittedForm?._ownerProperty)lmSyncSaleOwnerCustomers(submittedForm._ownerProperty)'));
  assert.ok(source.includes('고객 상세 · 상담 입력'));assert.ok(source.includes('연결 매물 · 소유 매물'));
 });
+test('owner screen opens the linked customer for consultation, including an explicit link for older owners',()=>{
+ const {JSDOM}=require('jsdom'),source=fs.readFileSync('index.html','utf8'),dom=new JSDOM('<main id="host"></main>'),host=dom.window.document.querySelector('main');
+ const db={customers:[{id:'c',personCode:'P-1',name:'소유주'}],records:[]},opened=[];
+ const context={db,document:dom.window.document,window:dom.window,esc:v=>String(v??''),lmShowRecordPopup:()=>host,lmOwnerHistoryHtml:()=>'',openCustomer:id=>opened.push(id),openPropertyEditModal:()=>{},authToken:'token',cloudReady:true,authStaffName:'직원',save:()=>true,newPersonCode:()=>'',alert:()=>{throw Error('unexpected alert')}};
+ vm.createContext(context);vm.runInContext(source.slice(source.indexOf('function lmSyncSaleOwnerCustomers('),source.indexOf('function lmPrepareOwnerSave(')),context);
+ vm.runInContext(source.slice(source.indexOf('function lmOpenOwnerTimeline('),source.indexOf('function lmOpenOwnerByCode(')),context);
+ const owner={name:'소유주',code:'P-1',currentProperties:new Map(),history:[]};context.lmOpenOwnerTimeline(owner);host.querySelector('button').click();assert.deepEqual(opened,['c']);
+ context.lmOpenOwnerTimeline({...owner,code:'P-older'});assert.match(host.querySelector('button').textContent,/고객으로 연결/);host.querySelector('button').click();assert.equal(opened[1],'owner:P-older');assert.equal(db.customers.length,2);assert.equal(db.customers[1].category,'소유주');dom.window.close();
+});
