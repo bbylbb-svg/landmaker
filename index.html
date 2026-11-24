@@ -2287,6 +2287,7 @@ function lmOpenKakaoRecord(message,scope){
  <h3>신규 고객 등록</h3>
  <label>이름<input name="name" required></label>
  <label>휴대폰번호<input name="phone" type="tel" autocomplete="tel"></label>
+ <label>담당자<select name="staff"><option value="">선택 안 함</option>${staffOptions(scope)}</select></label>
  <div class="row"><button type="submit">고객 저장</button><button type="button" class="alt" data-kakao-customer-cancel>취소</button></div>
  <p data-customer-status role="status"></p>
  </form>`;
@@ -2362,7 +2363,7 @@ function lmOpenKakaoRecord(message,scope){
      return;
    }
    const previous=db.customers;
-   const customer={id:id(),personCode:newPersonCode(),name,phone:number,staff:scope==='직원'?'':scope,createdAt:new Date().toISOString()};
+   const customer={id:id(),personCode:newPersonCode(),name,phone:number,staff:customerForm.elements.staff.value,createdAt:new Date().toISOString()};
    db.customers=[...previous,customer];
    if(!save()){
      db.customers=previous;
