@@ -2217,11 +2217,12 @@ function lmSetScheduleLinks(form,schedule){
 function lmSchedulePropertyAddress(property){
  return property?.address||property?.roadAddress||formatLot(property?.parcels?.[0]||{});
 }
-function lmOpenKakaoSchedule({customerId,propertyId,content}){
+function lmOpenKakaoSchedule({customerId,propertyId,content,staff}){
  tab='calendar';render();
  const form=$('#scheduleForm');
  form.elements.date.value='';
  form.elements.content.value=content;
+ if(staff)form.querySelectorAll('[name=scheduleStaff]').forEach(box=>{box.checked=box.value===staff});
  form.elements.place.value=lmSchedulePropertyAddress(get('properties',propertyId));
  lmSetScheduleLinks(form,{customerId,propertyId});
  $('#lmOpenSchedule').click();
@@ -2279,6 +2280,8 @@ function lmOpenKakaoRecord(message,scope){
  <button type="button" class="alt" data-kakao-new-customer aria-expanded="false">+ 신규 고객 등록</button>
  <label>주소로 매물 검색<input type="search" data-search="propertyId" placeholder="주소 · 지번 · 매물명" autocomplete="off"></label>
  <label>연결할 매물<select name="propertyId"></select></label>
+ <button type="button" class="alt" data-kakao-new-property>+ 신규 매물 등록</button>
+ <label>담당직원<select name="staff"><option value="">선택 안 함</option>${staffOptions(existing?existing.staff:scope)}</select></label>
  <label>기록일<input name="date" type="date" required></label>
  <label>연결할 내용<textarea name="content" rows="7" required></textarea></label>
  <div class="row"><button type="submit">연결 저장</button><button type="button" class="alt" data-kakao-schedule>일정 등록</button></div><p role="status"></p>
@@ -2290,6 +2293,15 @@ function lmOpenKakaoRecord(message,scope){
  <label>담당자<select name="staff"><option value="">선택 안 함</option>${staffOptions(scope)}</select></label>
  <div class="row"><button type="submit">고객 저장</button><button type="button" class="alt" data-kakao-customer-cancel>취소</button></div>
  <p data-customer-status role="status"></p>
+ </form>
+ <form data-kakao-property-form hidden>
+ <h3>신규 매물 등록</h3>
+ <label>매물명<input name="title" required></label>
+ <label>주소·지번<input name="address" required></label>
+ <label>거래형태<select name="type"><option value="">선택 안 함</option><option>매매</option><option>임대</option><option>매매·임대</option></select></label>
+ <label>담당직원<select name="staff"><option value="">선택 안 함</option>${staffOptions(scope)}</select></label>
+ <div class="row"><button type="submit">매물 저장</button><button type="button" class="alt" data-kakao-property-cancel>취소</button></div>
+ <p role="status"></p>
  </form>`;
  const form=host.querySelector('[data-kakao-link-form]');
  const status=form.querySelector('[role=status]');
@@ -2375,15 +2387,47 @@ function lmOpenKakaoRecord(message,scope){
    showCustomerForm(false);
    status.textContent='신규 고객을 저장하고 선택했습니다.';
  };
- bindSearch('propertyId','properties',lot);
+ const selectProperty=bindSearch('propertyId','properties',lot);
+ const propertyForm=host.querySelector('[data-kakao-property-form]');
+ const newPropertyButton=host.querySelector('[data-kakao-new-property]');
+ const propertyStatus=propertyForm.querySelector('[role=status]');
+ function showPropertyForm(open){
+   propertyForm.hidden=!open;
+   form.hidden=open;
+   if(open)propertyForm.elements.title.focus();
+   else newPropertyButton.focus();
+ }
+ newPropertyButton.onclick=()=>{
+   propertyForm.reset();
+   propertyStatus.textContent='';
+   propertyForm.elements.address.value=lot||'';
+   propertyForm.elements.staff.value=form.elements.staff.value;
+   showPropertyForm(true);
+ };
+ propertyForm.querySelector('[data-kakao-property-cancel]').onclick=()=>showPropertyForm(false);
+ propertyForm.onsubmit=event=>{
+   event.preventDefault();
+   const {title,address,type,staff}=formObj(propertyForm);
+   if(!title.trim()||!address.trim()){propertyStatus.textContent='매물명과 주소를 입력하세요.';return}
+   const parcel=address.trim().match(/(?:^|\s)([가-힣\d]+[동리읍면])\s*(산\s*)?(\d+)(?:\s*-\s*(\d+))?$/);
+   const parcels=parcel?[{dong:parcel[1],san:!!parcel[2],main:parcel[3],sub:parcel[4]||''}]:[];
+   const property={id:id(),title:title.trim(),address:address.trim(),type,staff,parcels,createdAt:new Date().toISOString()};
+   const previous=db.properties;
+   db.properties=[...previous,property];
+   if(!save()){db.properties=previous;propertyStatus.textContent='로그인 또는 공동저장 연결이 필요합니다.';return}
+   form.querySelector('[data-search="propertyId"]').value=property.address;
+   selectProperty(property.id);
+   showPropertyForm(false);
+   status.textContent='신규 매물을 저장하고 선택했습니다.';
+ };
  host.querySelector('[data-kakao-schedule]').onclick=()=>{
-   const {customerId,propertyId,content}=formObj(form);
+   const {customerId,propertyId,content,staff}=formObj(form);
    host.closest('#lmRecordPopup').querySelector('#lmRecordClose').click();
-   lmOpenKakaoSchedule({customerId,propertyId,content});
+   lmOpenKakaoSchedule({customerId,propertyId,content,staff});
  };
  form.onsubmit=event=>{
    event.preventDefault();
-   const {customerId,propertyId,date,content}=formObj(form);
+   const {customerId,propertyId,date,content,staff}=formObj(form);
    if(!customerId&&!propertyId){status.textContent='고객 또는 매물을 선택하세요.';return}
    if((customerId&&!get('customers',customerId))||(propertyId&&!get('properties',propertyId))){
      status.textContent='선택한 자료를 찾을 수 없습니다. 다시 검색해 주세요.';return;
@@ -2392,7 +2436,7 @@ function lmOpenKakaoRecord(message,scope){
    const before=db.records;
    const previous=before.find(record=>record.kakaoMessageId===message.id&&record.kakaoScope===scope);
    const record={...previous,id:previous?.id||id(),date,content:content.trim(),customerId,propertyId,
-     staff:previous?.staff||scope,createdAt:previous?.createdAt||new Date().toISOString(),
+     staff,createdAt:previous?.createdAt||new Date().toISOString(),
      kakaoMessageId:message.id,kakaoScope:scope};
    db.records=previous?before.map(item=>item.id===previous.id?record:item):[...before,record];
    if(!save()){db.records=before;status.textContent='로그인 또는 공동저장 연결이 필요합니다.';return}
