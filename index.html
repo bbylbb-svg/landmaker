@@ -957,38 +957,52 @@ function lmTodoMarkup(items){
  return items.map(lmTodoRow).join('')||'<p class="muted">표시할 할 일이 없습니다.</p>';
 }
 function lmContractGuides(){
- const proxy='대리인이 오시는 경우 위임서류가 필요하니 미리 연락 주세요.';
- const seller='매도인 잔금 준비 서류 안내드립니다.';
- const sale=['부동산 매도용 인감증명서 1통\n   (매매계약서를 지참해 주민센터 방문)', '등기권리증 또는 등기필정보', '인감도장', '주민등록초본 1통 (주소 변동사항 포함)'];
- const individual=['대표자 신분증', '도장 (서명으로 진행하는 경우 제외)', '사업자등록증 사본 (기존 사업자)'];
- const company=['사업자등록증 사본', '법인 등기사항증명서', '대표자 신분증', '법인인감과 법인인감증명서\n   (사용인감 또는 대리 계약은 사전 확인)'];
- const home=['신분증', '도장 (서명으로 진행하는 경우 제외)'];
+ const personal=['신분증', '도장 (서명으로 진행하는 경우 제외)', '사업자등록증 사본 (기존 사업자)'];
+ const corporate=['법인 사업자등록증 사본', '법인 등기사항증명서', '대표자 신분증', '법인인감도장과 법인인감증명서'];
+ const residential=['신분증', '도장 (서명으로 진행하는 경우 제외)'];
+ const transfer='계약 당일 이체하실 계약금이 있다면 이체 한도를 미리 확인해 주세요.';
+ const lease='대리인이 방문하시는 경우 필요한 위임서류를 미리 확인해 드리겠습니다.';
+ const sale='대리인 방문이나 공동명의 계약은 미리 알려 주세요. 잔금·등기 서류는 별도로 안내드리겠습니다.';
+ const corporateProxy='대표자 대신 방문하시거나 사용인감을 쓰시는 경우 미리 알려 주세요.';
+ const appointment=(title,kind,items,footer)=>[title,[
+  '안녕하세요. 광장부동산입니다.',
+  '[계약일] [시간]에 [매물 주소·층/호] '+kind+' 계약이 있습니다.',
+  '오실 곳은 [중개사무소명] ([방문 주소])입니다.',
+  '',
+  '오실 때 아래 준비물을 챙겨 주세요.',
+  ...items.map((item,index)=>(index+1)+'. '+item),
+  '',
+  transfer,
+  footer
+ ].join('\n')];
  return [
-  ['매도인 잔금 준비 서류 (개인)',seller,sale,'공동명의이거나 등기권리증을 찾기 어려우시면 미리 연락 주세요.'],
-  ['개인사업자 임대차','개인사업자 임대차계약 준비 서류 안내드립니다.',individual,proxy],
-  ['개인사업자 매매','개인사업자 매매계약 준비 서류 안내드립니다.',individual,proxy],
-  ['법인사업자 임대차','법인 임대차계약 준비 서류 안내드립니다.',company,proxy],
-  ['법인사업자 매매','법인 매매계약 준비 서류 안내드립니다.',company,'잔금·등기 서류는 별도로 안내드리겠습니다. '+proxy],
-  ['일반 주택 전세·월세','주택 전세·월세 계약 준비물 안내드립니다.',home,proxy],
-  ['일반 주택 매매','주택 매매계약 준비물 안내드립니다.',home,'잔금·등기 서류는 별도로 안내드리겠습니다. '+proxy]
+  appointment('개인사업자 임대계약','임대차',personal,lease),
+  appointment('개인사업자 매매계약','매매',personal,sale),
+  appointment('법인사업자 임대계약','임대차',corporate,corporateProxy),
+  appointment('법인사업자 매매계약','매매',corporate,corporateProxy+' 잔금·등기 서류는 별도로 안내드리겠습니다.'),
+  appointment('주택 매매계약','주택 매매',residential,sale),
+  appointment('주택 전세·월세 계약','주택 임대차',residential,lease),
+  ['매도인 잔금 준비 서류 (개인)',[
+   '안녕하세요. 광장부동산입니다.',
+   '매도인 잔금 준비 서류 안내드립니다.',
+   '1. 부동산 매도용 인감증명서 1통 (매매계약서 지참)',
+   '2. 등기권리증 또는 등기필정보',
+   '3. 인감도장',
+   '4. 주민등록초본 1통 (주소 변동사항 포함)',
+   '',
+   '공동명의이거나 등기권리증을 찾기 어려우시면 미리 연락 주세요.'
+  ].join('\n')]
  ];
 }
 function lmOpenContractGuide(){
  const host=lmShowRecordPopup('계약 구비서류 안내');
- const booking='광장부동산입니다.\n[매물 주소·층] 계약 일정은 [월/일] [오전·오후 시각]으로 잡았습니다.\n가계약금은 [금액]만 원입니다.\n사무실 주소는 과림동 360-15번지입니다.\n\n오실 때 아래 준비물을 챙겨 주세요.\n1. 개인·개인사업자: 신분증, 도장, 사업자등록증 사본(사업자인 경우)\n2. 법인: 법인인감도장, 법인인감증명서, 법인 등기사항증명서, 대표자 신분증, 사업자등록증 사본\n대표자 대신 방문하시는 경우 위임서류를 미리 확인해 주세요.';
- const notices=[
-  ['계약 일정·가계약금 안내',booking],
-  ['법인 계약 일정·방문 장소 안내','안녕하세요.\n광장부동산입니다.\n[계약일] [오전·오후 시각]에 [매물 지번·층] 계약이 있습니다.\n\n오실 곳은 [계약 장소 주소] [부동산명] ([도로명주소])입니다.\n\n오실 때 아래 서류와 계약금을 준비해 주세요.\n1. 법인 사업자등록증 사본\n2. 대표님 신분증\n3. 법인도장\n4. 계약금 이체 준비'],
-  ...lmContractGuides().map(([title,intro,items,footer])=>[title,['광장부동산입니다.',intro,...items.map((item,i)=>(i+1)+'. '+item),'',footer].join('\n')])
- ];
- for(const [title,message] of notices){
+ for(const [title,message] of lmContractGuides()){
   const section=document.createElement('details');
   const summary=document.createElement('summary');summary.textContent=title;
-  const content=document.createElement('p');content.style.whiteSpace='pre-wrap';
-  content.textContent=message;
+  const content=document.createElement('textarea');content.setAttribute('aria-label',title+' 안내문');content.value=message;
   const button=document.createElement('button');button.type='button';button.textContent='안내문 복사';
   const feedback=document.createElement('small');feedback.setAttribute('role','status');
-  button.onclick=async()=>{try{await navigator.clipboard.writeText(content.textContent);feedback.textContent=' 복사했어요.'}catch{feedback.textContent=' 문구를 선택해 직접 복사해 주세요.'}};
+  button.onclick=async()=>{try{await navigator.clipboard.writeText(content.value);feedback.textContent=' 복사했어요.'}catch{feedback.textContent=' 문구를 선택해 직접 복사해 주세요.'}};
   section.append(summary,content,button,feedback);host.append(section);
  }
  const sources=document.createElement('p');
