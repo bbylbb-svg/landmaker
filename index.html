@@ -4071,7 +4071,7 @@ const f={
   ...lmAdTradeFields(d),
   buildingUse:joined('buildingUse'),
   floors:(buildings[0] && lmAdFloorLabel(buildings[0])) || '지상1층/지하0층',
-  moveIn:p.availableDate || '즉시입주협의가능',
+  moveIn:String(p.availableDate || '즉시입주 협의가능').replace(/^즉시입주협의가능$/, '즉시입주 협의가능'),
   bathrooms:String(p.bathrooms??'').trim() ? String(p.bathrooms).replace(/^(\d+)$/,'$1개') : '1개',
   approval:joined('approvalDate'),
   parking,
