@@ -4042,6 +4042,20 @@ function lmAdTradeFields(d){
       deal==='sale'&&sale ? '매매가 '+sale : ''
   };
 }
+function lmAdFloorLabel(building){
+  const labels=String(building.floors||'').split(/[,/]/).map(s=>s.trim()).filter(Boolean);
+  const levels=(building.levels||[]).map(level=>String(level.levelName||'').trim()).filter(Boolean);
+  const total=String(building.floors||'').match(/지상\s*(\d+)\s*층\s*\/\s*지하\s*(\d+)\s*층/);
+  if(total)return '지상'+total[1]+'층/지하'+total[2]+'층';
+  const matches=(levels.length?levels:labels).map(label=>label.match(/^(지상|지하|B)?\s*(\d+)\s*층?$/i));
+  if(!matches.length||matches.some(match=>!match))return building.floors||levels.join(', ');
+  let above=0,below=0;
+  for(const [,side,number] of matches){
+    if(side==='지하'||side?.toUpperCase()==='B')below=Math.max(below,Number(number));
+    else above=Math.max(above,Number(number));
+  }
+  return '지상'+above+'층/지하'+below+'층';
+}
 function loadP(id){selected=String(id);window.lmPhotoAttachAds?.(selected);currentId=null;const p=props().find(x=>String(x.id)===selected);if(!p)return;const d=info(p);if(p.type==='임대'||p.type==='매매'){deal=p.type==='임대'?'lease':'sale';$ad('lmAdDeal').value=deal}$ad('lmAdSelected').textContent='선택 매물: '+propName(p)+' (원본 매물 연결됨)';$ad('lmAdTitle').value=publicLocation(p).replace(' (상세 지번 비공개)','')+(p.propertyKind?' '+p.propertyKind:'');$ad('lmAdDescription').value='';$ad('lmAdOffice').value='광장공인중개사사무소 · 경기도 시흥시 금오로 475';$ad('lmAdDisclosure').value='대표 백지인 · 등록번호 가 3662-2324';$ad('lmAdContact').value='02-2060-5500 / 010-2382-5600';$ad('lmAdNumber').value='';$ad('lmAdBlogUrl').value='';
 const buildings=p.buildings||[];
 const joined=key=>[...new Set(buildings.map(b=>b[key]).filter(Boolean))].join(' / ');
@@ -4060,14 +4074,14 @@ const f={
   area:lmAdDefaultArea(p),
   ...lmAdTradeFields(d),
   buildingUse:joined('buildingUse'),
-  floors:joined('floors'),
-  moveIn:p.availableDate,
-  bathrooms:p.bathrooms,
+  floors:[...new Set(buildings.map(lmAdFloorLabel).filter(Boolean))].join(' · ') || '지상1층/지하0층',
+  moveIn:p.availableDate || '즉시입주협의가능',
+  bathrooms:String(p.bathrooms??'').trim() ? String(p.bathrooms).replace(/^(\d+)$/,'$1개') : '1개',
   approval:joined('approvalDate'),
   parking,
   direction:p.direction,
   violation:buildings.some(b=>b.violation) ? '위반건축물 해당' :
-    buildings.length&&buildings.every(b=>b.violationAutoSet&&b.violationAuto===false) ? '위반건축물 아님' : '',
+    '위반건축물 아님',
   features
 };
 Object.keys(adExtraValues()).forEach(k=>{$ad('lmAdF_'+k).value=f[k]||''});preview()}
