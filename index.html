@@ -3871,12 +3871,142 @@ function needsClose(d){const p=props().find(x=>String(x.id)===String(d.propertyI
 function completionNotice(){const n=drafts().filter(needsClose).length;const e=$ad('lmAdCloseBanner');if(e)e.innerHTML=n?'<strong style="color:#b42318">⚠ 게시 종료 확인 필요: '+n+'건</strong><p>매매·임대 완료된 매물에 연결된 게시중 광고입니다. 네이버 블로그에서 직접 비공개·삭제한 뒤 아래 종료 확인을 눌러주세요.</p>':'<span style="color:#16744c">게시중 광고 중 완료 매물에 연결된 미처리 광고가 없습니다.</span>'}
 function adNumber(){return val('lmAdNumber')||'광고번호 미입력'}
 function adExtraValues(){const keys=['location','area','price','buildingUse','transaction','floors','moveIn','bathrooms','approval','parking','direction','violation','features'];return Object.fromEntries(keys.map(k=>[k,val('lmAdF_'+k)]))}
+/* SmartEditor ONE post body from 광장블로그 소스.txt. Editor-only scripts and IDs omitted. */
+const lmGwangjangBody = `<div class="se-module se-module-text">
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span style="font-size:19px;" class="se-fs-fs19 se-ff-   "><b>일 련 번 호 : {{serialStart}}</b></span><span style="color:#ff5f45;font-size:19px;" class="se-fs-fs19 se-ff-   "><b>{{serialEnd}}</b></span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">​</span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span style="font-size:13px;" class="se-fs-fs13 se-ff-   ">간략 정보</span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span style="color:#0078cb;font-size:19px;" class="se-fs-fs19 se-ff-   "><b>{{propertyType}}</b></span><span style="color:#e2e2e2;font-size:19px;" class="se-fs-fs19 se-ff-   "><b>｜</b></span><span style="color:#0078cb;font-size:19px;" class="se-fs-fs19 se-ff-   "><b>{{summaryArea}}</b></span><span style="color:#e2e2e2;font-size:19px;" class="se-fs-fs19 se-ff-   "><b>｜</b></span><span style="color:#0078cb;font-size:19px;" class="se-fs-fs19 se-ff-   "><b>{{summaryPrice}}</b></span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span style="color:#0078cb;font-size:19px;" class="se-fs-fs19 se-ff-   "><b>​</b></span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span style="color:#ff0010;font-size:13px;" class="se-fs-fs13 se-ff-   "><b>⚡ {{pointsHeading}}</b></span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span style="color:#000000;" class="se-fs- se-ff-   "><b>{{points}}</b></span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span style="color:#0095e9;font-size:19px;" class="se-fs-fs19 se-ff-   ">​</span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span style="font-size:13px;" class="se-fs-fs13 se-ff- se-weight-unset  ">상세정보</span></p>
+<ul class="se-text-list se-text-list-type-bullet-disc" style="margin:0;padding-left:24px;list-style-type:disc;"><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">소  재  지 </span></p>
+</li></ul><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">    </span><span class="se-fs- se-ff-   "><b>{{address}}</b></span><span class="se-fs- se-ff- se-weight-unset  ">｜{{addressDeal}}</span></p>
+<ul class="se-text-list se-text-list-type-bullet-disc" style="margin:0;padding-left:24px;list-style-type:disc;"><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">면       적 </span></p>
+</li></ul><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">    대지면적 : {{land}}</span><span style="color:#0078cb;" class="se-fs- se-ff-   "><b>{{landPyeong}}</b></span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">    연  면  적 : {{building}}</span><span style="color:#0078cb;" class="se-fs- se-ff-   "><b>{{buildingPyeong}}</b></span></p>
+<ul class="se-text-list se-text-list-type-bullet-disc" style="margin:0;padding-left:24px;list-style-type:disc;"><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">가        격 :  {{priceLabel}}</span><span style="color:#0078cb;" class="se-fs- se-ff-   "><b>{{price}}</b></span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">건축물 용도 : {{buildingUse}}</span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">거 래 형 태 : {{transaction}}</span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">총    층   수 : {{floors}}</span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">입주가능일 : {{moveIn}}</span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">화    장   실 : {{bathrooms}}</span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">사용 승인일 : {{approval}}</span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">주 차  대 수 : {{parking}}</span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">방          향 : {{direction}}</span></p>
+</li><li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff- se-weight-unset  ">{{violation}}</span></p>
+</li></ul><p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">​</span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span style="font-size:13px;" class="se-fs-fs13 se-ff-   ">특징</span></p>
+<ul class="se-text-list se-text-list-type-bullet-disc" style="margin:0;padding-left:24px;list-style-type:disc;">{{features}}</ul><p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">​</span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">​</span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">​</span></p>
+<p class="se-text-paragraph se-text-paragraph-align- " style="margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">​</span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="line-height:1.8;margin:0;text-align:center;white-space:pre-wrap;"><span style="color:#333333;font-size:28px;" class="se-fs-fs28 se-ff- se-weight-unset se-style-unset ">공장·토지·창고 전문 </span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="line-height:1.8;margin:0;text-align:center;white-space:pre-wrap;"><span style="color:#333333;font-size:15px;" class="se-fs-fs15 se-ff-  se-style-unset ">전화 ·방문 주시면 친절하게 설명 드리겠습니다.</span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="line-height:1.8;margin:0;text-align:center;white-space:pre-wrap;"><span style="color:#333333;font-size:15px;" class="se-fs-fs15 se-ff-  se-style-unset ">다양한 매물 준비되어 있으며 신규 매물 접수 및 상담 전화 환영 합니다. </span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="margin:0;text-align:center;white-space:pre-wrap;"><span style="font-size:28px;" class="se-fs-fs28 se-ff-   ">​</span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="margin:0;text-align:center;white-space:pre-wrap;"><span style="font-size:28px;" class="se-fs-fs28 se-ff-   ">광장공인중개사사무소 </span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="margin:0;text-align:center;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">대 표 : 백 지 인 ｜ 등 록 번 호 : </span><span style="color:#000000;" class="se-fs- se-ff-   ">가 3662-2324</span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="margin:0;text-align:center;white-space:pre-wrap;"><span style="font-size:13px;" class="se-fs-fs13 se-ff-   ">소재지 : 경기도시흥시 과림동360-15 (금오로475)</span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="margin:0;text-align:center;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">전화 : 02-2060-5500 ｜010-2382-5600</span></p>
+<p class="se-text-paragraph se-text-paragraph-align-center " style="margin:0;text-align:center;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">​</span></p>
+</div>
+<div style="text-align:center;margin-top:24px"><img src="https://postfiles.pstatic.net/MjAyNjEwMjFfMTAg/MDAxNzkyNTUwODk3NjU4.wnD881YEELlDVPPOR-DwC_fkaWEYzUKHhbDBUhV2FMgg.Hc4mjNv0xVDBFqXc4AWnAAMdotilnYVbIKqxDeT86eEg.PNG/image.png?type=w773" width="533" height="533" alt="광장공인중개사사무소" style="max-width:100%;height:auto;"></div><p style="text-align:center;margin:24px 0 0"><a href="https://map.naver.com/p/entry/place/13210885" target="_blank" rel="noopener noreferrer"><strong>광장공인중개사</strong><br>경기도 시흥시 금오로 475</a></p>`;
+const lmGwangjangFeature = `<li class="se-text-list-item" style="margin:0;"><p class="se-text-paragraph se-text-paragraph-align- " style="line-height:2.0;margin:0;text-align:left;white-space:pre-wrap;"><span class="se-fs- se-ff-   ">{{feature}}</span></p>
+</li>`;
+const lmAdCheck = '[확인 후 입력]';
+const lmAdAreaPattern = /([\d,]+(?:\.\d+)?)\s*(?:㎡|m²|m2)/i;
+const lmAdPyeongPattern = /([\d,]+(?:\.\d+)?)\s*평/;
+function lmAdArea(value){
+  const sqm = value.match(lmAdAreaPattern)?.[1];
+  const pyeong = value.match(lmAdPyeongPattern)?.[1];
+  const amount = Number((sqm || pyeong || '').replace(/,/g,'')) * (sqm ? 1 : 3.305785);
+  if(!Number.isFinite(amount) || amount <= 0) return null;
+  return {
+    sqm: amount.toLocaleString('ko-KR',{maximumFractionDigits:2})+'㎡',
+    pyeong: '약 '+Math.round(amount/3.305785).toLocaleString('ko-KR')+'평'
+  };
+}
+function lmAdAmount(value){
+  if(!value || value==='미입력만원') return {short:lmAdCheck,full:lmAdCheck};
+  const match = value.match(/^\s*([\d,]+(?:\.\d+)?)\s*(만원|원)\s*(?:\([^()]*\))?\s*$/);
+  if(!match) return {short:value,full:value};
+  const won = Math.round(Number(match[1].replace(/,/g,'')) * (match[2]==='만원'?10000:1));
+  if(!Number.isSafeInteger(won)) return {short:value,full:value};
+  const eok = Math.floor(won/100000000), man = Math.floor(won%100000000/10000), remainder = won%10000;
+  const short = (eok ? eok+'억' : '') + (man ? man+'만' : '') + (remainder || '');
+  const numeric = won.toLocaleString('ko-KR')+'원';
+  return {short:short ? short+'원' : numeric, full:eok||man ? numeric+' ('+short+'원)' : numeric};
+}
+function lmAdPrice(value){
+  if(deal==='lease'){
+    const amounts = value.match(/^보증금\s*(.*?)\s*\/\s*월세\s*(.*?)\s*$/);
+    if(amounts){
+      const deposit=lmAdAmount(amounts[1]),rent=lmAdAmount(amounts[2]);
+      return {
+        short:'보증금 '+deposit.short+' / 월세 '+rent.short,
+        full:'보증금 '+deposit.full+' / 월세 '+rent.full
+      };
+    }
+  }
+  return lmAdAmount(value.replace(/^매매가\s*/, '') || lmAdCheck);
+}
+function lmGwangjangAd(p,f,type){
+  const number=val('lmAdNumber').replace(/\s/g,'');
+  const head=number.slice(0,-3).split('').join(' ');
+  const areaParts=f.area.split(/연\s*면\s*적\s*[:：]?/);
+  const land=lmAdArea(areaParts[0]);
+  const legacyBuilding=areaParts[1]?.trim();
+  const building=lmAdArea(legacyBuilding || '') ||
+    (legacyBuilding==='건물정보 별도 확인 필요' ? lmAdArea(lmAdDefaultArea(p).split('연면적: ')[1]) : null);
+  const price=lmAdPrice(f.price);
+  const points=val('lmAdDescription').split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,3);
+  const features=f.features.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const values={
+    serialStart: head ? head+' ' : number ? '' : '[광고번호 입력]',
+    serialEnd: number.slice(-3).split('').join(' '),
+    propertyType: p.propertyKind || lmAdCheck,
+    summaryArea:'토지 '+(land?.pyeong || lmAdCheck)+', 건물 '+(building?.pyeong || lmAdCheck),
+    summaryPrice:price.short,
+    pointsHeading:type+' 포인트',
+    address:f.location || lmAdCheck,
+    addressDeal:type,
+    land:land ? land.sqm+' / ' : lmAdCheck,
+    landPyeong:land?.pyeong || '',
+    building:building ? building.sqm+' / ' : lmAdCheck,
+    buildingPyeong:building?.pyeong || '',
+    priceLabel:deal==='sale'?'매  매  가 ':deal==='info'?'정보 확인 ': '',
+    price:price.full,
+    buildingUse:f.buildingUse || lmAdCheck,
+    transaction:(f.transaction || type).replace(/^(매매|임대)$/, value=>value.split('').join(' ')),
+    floors:f.floors || lmAdCheck,
+    moveIn:f.moveIn || lmAdCheck,
+    bathrooms:f.bathrooms || lmAdCheck,
+    approval:f.approval || lmAdCheck,
+    parking:f.parking || lmAdCheck,
+    direction:f.direction || lmAdCheck,
+    violation:f.violation || '위반건축물 여부 '+lmAdCheck
+  };
+  return '<div style="font-family:sans-serif;font-size:16px;color:#000;line-height:1.8;letter-spacing:normal">'+
+    lmGwangjangBody.replace(/\{\{(\w+)\}\}/g,(_,key)=>{
+      if(key==='points') return (points.length ? points : [lmAdCheck]).map(safe).join('<span style="color:#e2e2e2;">｜</span>');
+      if(key==='features') return (features.length ? features : [lmAdCheck]).map(value=>lmGwangjangFeature.replace('{{feature}}',()=>safe(value))).join('');
+      return safe(values[key]);
+    })+'</div>';
+}
+function lmAdDefaultArea(p){
+  const sqm=value=>Number(String(value??'').replace(/,/g,'')) || 0;
+  const land=(p.parcels||[]).reduce((sum,item)=>sum+sqm(item.sqm),0);
+  const building=(p.buildings||[]).reduce((sum,item)=>sum+sqm(item.floorSqm),0) || sqm(p.buildingSqm);
+  return '대지면적: '+(land ? land+'㎡' : '면적 확인 필요')+' / 연면적: '+(building ? building+'㎡' : '면적 확인 필요');
+}
 function richHtml(){const p=props().find(x=>String(x.id)===String(selected));if(!p)return '';
-const d=info(p),f=adExtraValues(),type=deal==='lease'?'임대':deal==='sale'?'매매':'정보';
-const clean=x=>safe(String(x||'')), blue=x=>'<b style="color:#0078cb">'+clean(x)+'</b>';
-const number=adNumber().replace(/\s/g,''),digits=number.split(''),cut=Math.max(0,digits.length-3);
-const num='<p style="font-size:19px;font-weight:bold;margin:0 0 30px">일 련 번 호 : '+clean(digits.slice(0,cut).join(' '))+' <span style="color:#ff5f45">'+clean(digits.slice(cut).join(' '))+'</span></p>';
-const h=x=>'<p style="font-size:13px;margin:24px 0 8px">'+clean(x)+'</p>';
+const f=adExtraValues(),type=deal==='lease'?'임대':deal==='sale'?'매매':'정보';
+if(kind==='old')return lmGwangjangAd(p,f,type);
+const clean=x=>safe(String(x||''));
+const number=adNumber().replace(/\s/g,'');
 const li=x=>'<li style="line-height:2;margin:0">'+x+'</li>';
 const list=x=>'<ul style="list-style-type:disc;padding-left:24px;margin:0 0 10px">'+x+'</ul>';
 const rawTitle=val('lmAdTitle')||'공장·창고';
@@ -3896,28 +4026,84 @@ const details=[
 ['방          향',f.direction],
 ['위반건축물 여부',f.violation]
 ];
-const detailHtml=details.map(([label,v])=>li(clean(label)+' : '+(v?clean(v):'<span style="color:#a65a00">[확인 후 입력]</span>'))).join('');
 const features=f.features.split(/\n+/).map(x=>x.trim()).filter(Boolean);
 const featuresHtml=features.length?features.map(x=>li(clean(x))).join(''):li('<span style="color:#a65a00">[특징 입력 필요]</span>');
-const points=val('lmAdDescription').split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,3).map(clean).join('<span style="color:#e2e2e2">｜</span>');
-const summary=blue(title)+' <span style="color:#e2e2e2">｜</span> '+blue(f.area||'면적 확인 필요')+' <span style="color:#e2e2e2">｜</span> '+blue(f.price||'가격 확인 필요');
-if(kind==='old')return '<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#222;font-size:15px;line-height:1.6;max-width:780px">'+num+h('간략 정보')+'<p style="font-size:19px;margin:0 0 24px">'+summary+'</p><p style="font-size:13px;color:#ff0010;font-weight:bold;margin:0 0 6px">⚡ '+type+' 포인트</p><p style="font-weight:bold;margin:0 0 24px">'+(points||'[매물 포인트 입력 필요]')+'</p>'+h('상세정보')+list(detailHtml)+h('특징')+list(featuresHtml)+office+'</div>';
 const row=(a,b)=>'<tr><th style="border:1px solid #ddd;background:#f5f8fb;padding:10px;text-align:left">'+clean(a)+'</th><td style="border:1px solid #ddd;padding:10px">'+clean(b||'확인 후 입력')+'</td></tr>';
 return '<div style="font-family:Arial,Malgun Gothic,sans-serif;color:#253442;max-width:760px"><h2>'+clean(title)+'</h2><p>광고번호 '+clean(number)+'</p><table style="border-collapse:collapse;width:100%">'+details.map(x=>row(...x)).join('')+'</table><h3>특징</h3>'+list(featuresHtml)+office+'</div>';
 }
 function text(){const p=props().find(x=>String(x.id)===String(selected));if(!p)return '왼쪽에서 매물을 선택해주세요.';const d=info(p),title=val('lmAdTitle')||d.title,desc=val('lmAdDescription'),contact=val('lmAdContact'),office=val('lmAdOffice'),disclosure=val('lmAdDisclosure');const money=deal==='lease'?'보증금 '+d.deposit+'만원 / 월세 '+d.rent+'만원':deal==='info'?'정보 제공용 (거래조건 별도 확인)':'매매가 '+d.sale+'만원';const facts='소재지: '+publicLocation(p)+'\n토지면적: '+d.land+'\n건물면적: '+d.building+'\n지목: '+d.use+'\n거래조건: '+money;const foot='\n\n[중개사무소 및 법정 표시사항 — 게시 전 확인]\n'+(office||'중개사무소 정보 입력 필요')+'\n'+(disclosure||'등록번호·소재지·대표자명·연락처 등 필수정보 확인 필요')+(contact?'\n문의: '+contact:'\n문의 연락처 입력 필요');return kind==='old'?'[매물 안내]\n'+title+'\n\n'+facts+'\n\n[매물 상세]\n'+(desc||'현장 확인 후 상세 내용을 입력해주세요.')+foot:'🏡 '+title+'\n\n[한눈에 보는 매물 핵심정보]\n'+facts+'\n\n[이런 점을 확인해 보세요]\n'+(desc||'입지, 진입도로, 건축물 용도, 사용 가능 여부 등 확인된 사항을 입력해주세요.')+'\n\n[현장 사진 및 위치 안내]\n사진과 지도는 게시 전에 직접 첨부하고 주소 공개 범위를 확인해주세요.'+foot}
 function preview(){const el=$ad('lmAdPreview');if(el)el.innerHTML=selected?richHtml():safe(text())}
-function loadP(id){selected=String(id);window.lmPhotoAttachAds?.(selected);currentId=null;const p=props().find(x=>String(x.id)===selected);if(!p)return;const d=info(p);$ad('lmAdSelected').textContent='선택 매물: '+propName(p)+' (원본 매물 연결됨)';$ad('lmAdTitle').value=publicLocation(p).replace(' (상세 지번 비공개)','')+' 공장·창고';$ad('lmAdDescription').value='';$ad('lmAdOffice').value='광장공인중개사사무소 · 경기도 시흥시 금오로 475';$ad('lmAdDisclosure').value='대표 백지인 · 등록번호 가 3662-2324';$ad('lmAdContact').value='02-2060-5500 / 010-2382-5600';$ad('lmAdNumber').value='';$ad('lmAdBlogUrl').value='';
-const f={location:publicLocation(p).replace(' (상세 지번 비공개)',''),area:'대지면적: '+d.land+' / 연면적: '+d.building,price:deal==='lease'?'보증금 '+d.deposit+'만원 / 월세 '+d.rent+'만원':'매매가 '+d.sale+'만원',transaction:deal==='lease'?'임대':'매매'};
+function lmAdTradeFields(d){
+  const amount=value=>value==='미입력' ? '' : value+'만원';
+  const deposit=amount(d.deposit),rent=amount(d.rent),sale=amount(d.sale);
+  return {
+    transaction:deal==='lease'?'임대':deal==='sale'?'매매':'정보',
+    price:deal==='lease' ? (deposit||rent ? '보증금 '+(deposit||lmAdCheck)+' / 월세 '+(rent||lmAdCheck) : '') :
+      deal==='sale'&&sale ? '매매가 '+sale : ''
+  };
+}
+function loadP(id){selected=String(id);window.lmPhotoAttachAds?.(selected);currentId=null;const p=props().find(x=>String(x.id)===selected);if(!p)return;const d=info(p);if(p.type==='임대'||p.type==='매매'){deal=p.type==='임대'?'lease':'sale';$ad('lmAdDeal').value=deal}$ad('lmAdSelected').textContent='선택 매물: '+propName(p)+' (원본 매물 연결됨)';$ad('lmAdTitle').value=publicLocation(p).replace(' (상세 지번 비공개)','')+(p.propertyKind?' '+p.propertyKind:'');$ad('lmAdDescription').value='';$ad('lmAdOffice').value='광장공인중개사사무소 · 경기도 시흥시 금오로 475';$ad('lmAdDisclosure').value='대표 백지인 · 등록번호 가 3662-2324';$ad('lmAdContact').value='02-2060-5500 / 010-2382-5600';$ad('lmAdNumber').value='';$ad('lmAdBlogUrl').value='';
+const buildings=p.buildings||[];
+const joined=key=>[...new Set(buildings.map(b=>b[key]).filter(Boolean))].join(' / ');
+const parking=buildings.map((b,i)=>{
+  const counts=[['옥내',b.indoorParking],['옥외',b.outdoorParking]]
+    .filter(([,value])=>/^\d+$/.test(String(value??'').trim()));
+  if(!counts.length)return '';
+  if(buildings.length===1&&counts.length===2)return counts.reduce((sum,[,value])=>sum+Number(value),0)+'대';
+  const prefix=buildings.length>1 ? (b.buildingName||((i+1)+'번째 건물'))+' ' : '';
+  return prefix+counts.map(([label,value])=>label+' '+value+'대').join(' / ');
+}).filter(Boolean).join(' · ');
+const features=[['호이스트',p.hoist],['전기',p.electricity],['진입차량',p.vehicle]]
+  .filter(([,value])=>String(value??'').trim()).map(([label,value])=>label+' '+value).join('\n');
+const f={
+  location:publicLocation(p).replace(' (상세 지번 비공개)',''),
+  area:lmAdDefaultArea(p),
+  ...lmAdTradeFields(d),
+  buildingUse:joined('buildingUse'),
+  floors:joined('floors'),
+  moveIn:p.availableDate,
+  bathrooms:p.bathrooms,
+  approval:joined('approvalDate'),
+  parking,
+  direction:p.direction,
+  violation:buildings.some(b=>b.violation) ? '위반건축물 해당' :
+    buildings.length&&buildings.every(b=>b.violationAutoSet&&b.violationAuto===false) ? '위반건축물 아님' : '',
+  features
+};
 Object.keys(adExtraValues()).forEach(k=>{$ad('lmAdF_'+k).value=f[k]||''});preview()}
 function showSearch(){const root=$ad('lmAdResults');if(!root)return;const q=search.toLowerCase();const found=props().filter(p=>!q||String(p.id).toLowerCase().includes(q)||propName(p).toLowerCase().includes(q)||(p.parcels||[]).some(z=>String(z.dong||'').toLowerCase().includes(q))).slice(0,40);root.innerHTML=found.map(p=>'<button type="button" data-property="'+safe(p.id)+'">'+safe(propName(p))+' <span class="lm-ad-small">(원본 매물)</span></button>').join('')||'<div class="muted" style="padding:12px">검색 결과가 없습니다.</div>';root.querySelectorAll('[data-property]').forEach(b=>b.onclick=()=>loadP(b.dataset.property))}
 function showDrafts(){const el=$ad('lmAdDrafts');if(!el)return;const a=drafts();el.innerHTML=a.length?a.slice().reverse().map(d=>'<div class="row" style="border-bottom:1px solid #eee;padding:5px 0"><span>'+safe(d.number||'번호 없음')+' · '+safe(d.title)+' <span class="lm-ad-small">('+safe(needsClose(d)?'⚠ 게시 종료 필요':d.status||'작성중')+' · '+safe(d.updated||'')+')</span></span><button class="alt" data-open="'+safe(d.id)+'">불러오기</button><button class="danger" data-delete="'+safe(d.id)+'">삭제</button></div>').join(''):'<p class="muted">이 브라우저에 저장된 광고 초안이 없습니다.</p>';el.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const d=drafts().find(x=>x.id===b.dataset.open);if(!d)return;loadP(d.propertyId);currentId=d.id;kind=d.kind;deal=d.deal;$ad('lmAdKind').value=kind;$ad('lmAdDeal').value=deal;['Title','Description','Contact','Office','Disclosure','Number','BlogUrl'].forEach(k=>$ad('lmAd'+k).value=d[k.toLowerCase()]||'');Object.keys(adExtraValues()).forEach(k=>$ad('lmAdF_'+k).value=(d.extra||{})[k]||'');$ad('lmAdStatus').value=d.status||'작성중';preview()});el.querySelectorAll('[data-blog]').forEach(b=>b.onclick=()=>{const d=drafts().find(x=>x.id===b.dataset.blog);if(d&&/^https:\/\/(blog\.naver\.com|m\.blog\.naver\.com)\//.test(d.blogurl||''))window.open(d.blogurl,'_blank','noopener');else alert('유효한 네이버 블로그 URL을 등록해주세요.')});el.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{if(!confirm('네이버 블로그에서 해당 광고를 실제로 비공개 또는 삭제했나요? 확인한 경우에만 종료 기록합니다.'))return;const a=drafts(),d=a.find(x=>x.id===b.dataset.close);if(!d)return;d.status='종료';d.closedAt=new Date().toLocaleString('ko-KR');d.updated=d.closedAt;if(persist(a)){showDrafts();completionNotice()}});completionNotice();el.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{if(!confirm('이 광고 초안을 삭제할까요? (매물 원본은 삭제되지 않습니다)'))return;persist(drafts().filter(x=>x.id!==b.dataset.delete));showDrafts()})}
 window.lmAdManagerView=function(){
-$ad('view').innerHTML=`<div class="panel"><h2>블로그 광고관리</h2><p class="muted">기존 매물정보를 불러와 광고 초안을 작성합니다. 매물 원본은 변경되지 않습니다. 네이버 블로그에 자동 게시하지 않으며, 초안은 현재 브라우저에만 저장됩니다.</p></div><div class="panel" id="lmAdCloseBanner" style="margin-bottom:12px"></div><div class="lm-ad-layout"><section class="panel lm-ad-form"><h3>① 광고할 매물 찾기</h3><label>광고번호로 기존 광고 찾기<input id="lmAdLookup" placeholder="예: 02026037"></label><button id="lmAdFindNumber" type="button" class="alt">광고번호 검색</button><label>매물번호 · 매물명 · 행정동<input id="lmAdSearch" placeholder="검색어 입력"></label><div id="lmAdResults" class="lm-ad-list"></div><p id="lmAdSelected" class="muted">매물을 선택해주세요.</p><h3>② 광고 형식 선택</h3><label>광고번호 (블로그에 표시)<input id="lmAdNumber" placeholder="예: 02026037"></label><label>게시된 블로그 글 주소<input id="lmAdBlogUrl" placeholder="https://blog.naver.com/..."></label><label>광고 양식<select id="lmAdKind"><option value="old" selected>기존 블로그 광고형 (기본)</option><option value="new">새로운 광고형</option></select></label><label>광고 종류<select id="lmAdDeal"><option value="sale">매매</option><option value="lease">임대</option><option value="info">정보성</option></select></label><label>광고 제목<input id="lmAdTitle" placeholder="매물 선택 시 자동입력"></label><label>소개 문구 및 확인된 특징<textarea id="lmAdDescription" placeholder="확인된 사실만 기재하세요."></textarea></label><h3>③ 광고 상세정보 (항목별 입력)</h3><p class="lm-ad-small">원본 매물에서 확인 가능한 값만 채웁니다. 나머지는 확인 후 입력해주세요.</p><label>소재지 (상세 지번 제외)<input id="lmAdF_location" placeholder=""></label><label>면적 (대지·연면적)<input id="lmAdF_area" placeholder="대지면적: ㎡ / 약 평, 연면적: ㎡ / 약 평"></label><label>가격<input id="lmAdF_price" placeholder=""></label><label>건축물 용도<input id="lmAdF_buildingUse" placeholder=""></label><label>거래형태<input id="lmAdF_transaction" placeholder=""></label><label>총층수<input id="lmAdF_floors" placeholder=""></label><label>입주가능일<input id="lmAdF_moveIn" placeholder=""></label><label>화장실<input id="lmAdF_bathrooms" placeholder=""></label><label>사용승인일<input id="lmAdF_approval" placeholder=""></label><label>주차대수<input id="lmAdF_parking" placeholder=""></label><label>방향<input id="lmAdF_direction" placeholder=""></label><label>위반건축물 여부<input id="lmAdF_violation" placeholder=""></label><label>특징 (한 줄에 하나씩)<textarea id="lmAdF_features" rows="6" placeholder="확인된 특징을 한 줄에 하나씩 입력"></textarea></label><label>사무소명 및 소재지<input id="lmAdOffice" placeholder="중개사무소명 · 소재지"></label><label>법정 표시사항<input id="lmAdDisclosure" placeholder="등록번호 · 개업공인중개사 성명 등 (게시 전 확인)"></label><label>문의 연락처<input id="lmAdContact" placeholder="광고용 연락처"></label><label>광고 상태<select id="lmAdStatus"><option>작성중</option><option>게시중</option><option>수정필요</option><option>종료</option></select></label><div class="lm-ad-actions"><button id="lmAdSave">초안 저장</button><button id="lmAdCopy" class="alt">서식 포함 복사</button><button id="lmAdCopyPlain" class="alt">텍스트 복사</button><button id="lmAdDownload" class="alt">텍스트 저장</button></div><p class="lm-ad-small">※ 서식 복사는 브라우저 및 네이버 블로그 편집기 정책에 따라 일부 변경될 수 있습니다. 기존 광고형은 제공된 네이버 블로그 게시글의 텍스트 구조를 반영했습니다. 네이버 편집기에서 글꼴·이미지·줄 간격이 일부 달라질 수 있습니다.</p></section><section><div class="panel"><h3>③ 광고문 미리보기</h3><div id="lmAdPreview" class="lm-ad-preview"></div><p class="lm-ad-small">※ 토지·건축물 현황, 가격, 광고 법정 필수 표시사항을 확인한 뒤 게시하세요. 내부 메모·소유주 개인정보는 자동 노출하지 않습니다.</p></div><div class="panel lm-ad-drafts"><h3>④ 저장된 광고 초안</h3><div id="lmAdDrafts"></div></div></section></div>`;
-$ad('lmAdSearch').oninput=e=>{search=e.target.value;showSearch()};$ad('lmAdKind').onchange=e=>{kind=e.target.value;preview()};$ad('lmAdDeal').onchange=e=>{deal=e.target.value;const p=props().find(x=>String(x.id)===String(selected));if(p){const d=info(p);$ad('lmAdF_transaction').value=deal==='lease'?'임대':deal==='sale'?'매매':'정보';$ad('lmAdF_price').value=deal==='lease'?'보증금 '+d.deposit+'만원 / 월세 '+d.rent+'만원':deal==='sale'?'매매가 '+d.sale+'만원':''}preview()};['Title','Description','Contact','Office','Disclosure','Number','BlogUrl'].forEach(k=>$ad('lmAd'+k).oninput=preview);Object.keys(adExtraValues()).forEach(k=>$ad('lmAdF_'+k).oninput=preview);
+$ad('view').innerHTML=`<div class="panel"><h2>블로그 광고관리</h2><p class="muted">기존 매물정보를 불러와 광고 초안을 작성합니다. 매물 원본은 변경되지 않습니다. 네이버 블로그에 자동 게시하지 않으며, 초안은 현재 브라우저에만 저장됩니다.</p></div><div class="panel" id="lmAdCloseBanner" style="margin-bottom:12px"></div><div class="lm-ad-layout"><section class="panel lm-ad-form"><h3>① 광고할 매물 찾기</h3><label>광고번호로 기존 광고 찾기<input id="lmAdLookup" placeholder="예: 02026037"></label><button id="lmAdFindNumber" type="button" class="alt">광고번호 검색</button><label>매물번호 · 매물명 · 행정동<input id="lmAdSearch" placeholder="검색어 입력"></label><div id="lmAdResults" class="lm-ad-list"></div><p id="lmAdSelected" class="muted">매물을 선택해주세요.</p><h3>② 광고 형식 선택</h3><label>광고번호 (블로그에 표시)<input id="lmAdNumber" placeholder="예: 02026037"></label><label>게시된 블로그 글 주소<input id="lmAdBlogUrl" placeholder="https://blog.naver.com/..."></label><label>광고 양식<select id="lmAdKind"><option value="old" selected>기존 블로그 광고형 (기본)</option><option value="new">새로운 광고형</option></select></label><label>광고 종류<select id="lmAdDeal"><option value="sale">매매</option><option value="lease">임대</option><option value="info">정보성</option></select></label><label>광고 제목<input id="lmAdTitle" placeholder="매물 선택 시 자동입력"></label><label>소개 문구 및 확인된 특징<textarea id="lmAdDescription" placeholder="확인된 사실만 기재하세요."></textarea></label><h3>③ 매물에서 불러온 광고 상세정보</h3><p class="lm-ad-small">등록된 정보를 자동으로 불러옵니다. 비어 있거나 광고에서 바꿀 항목만 확인해 주세요.</p><label>소재지 (상세 지번 제외)<input id="lmAdF_location" placeholder=""></label><label>면적 (대지·연면적)<input id="lmAdF_area" placeholder="대지면적: ㎡ / 약 평, 연면적: ㎡ / 약 평"></label><label>가격<input id="lmAdF_price" placeholder=""></label><label>건축물 용도<input id="lmAdF_buildingUse" placeholder=""></label><label>거래형태<input id="lmAdF_transaction" placeholder=""></label><label>총층수<input id="lmAdF_floors" placeholder=""></label><label>입주가능일<input id="lmAdF_moveIn" placeholder=""></label><label>화장실<input id="lmAdF_bathrooms" placeholder=""></label><label>사용승인일<input id="lmAdF_approval" placeholder=""></label><label>주차대수<input id="lmAdF_parking" placeholder=""></label><label>방향<input id="lmAdF_direction" placeholder=""></label><label>위반건축물 여부<input id="lmAdF_violation" placeholder=""></label><label>특징 (한 줄에 하나씩)<textarea id="lmAdF_features" rows="6" placeholder="확인된 특징을 한 줄에 하나씩 입력"></textarea></label><label>사무소명 및 소재지<input id="lmAdOffice" placeholder="중개사무소명 · 소재지"></label><label>법정 표시사항<input id="lmAdDisclosure" placeholder="등록번호 · 개업공인중개사 성명 등 (게시 전 확인)"></label><label>문의 연락처<input id="lmAdContact" placeholder="광고용 연락처"></label><label>광고 상태<select id="lmAdStatus"><option>작성중</option><option>게시중</option><option>수정필요</option><option>종료</option></select></label><div class="lm-ad-actions"><button id="lmAdSave">초안 저장</button><button id="lmAdCopy" class="alt">블로그용 서식 복사</button></div><details><summary>텍스트 복사 · 파일 저장</summary><div class="lm-ad-actions"><button id="lmAdCopyPlain" class="alt">글자만 복사</button><button id="lmAdDownload" class="alt">텍스트 파일 다운로드</button></div></details><p class="lm-ad-small">※ 서식 복사는 브라우저 및 네이버 블로그 편집기 정책에 따라 일부 변경될 수 있습니다. 광장 원본 양식은 업체 이미지와 네이버 지도 링크를 포함합니다. 이미지가 빠지면 편집기의 사진 첨부를, 장소 카드가 필요하면 장소 첨부를 이용해 주세요.</p></section><section><div class="panel"><h3>③ 광고문 미리보기</h3><div id="lmAdPreview" class="lm-ad-preview"></div><p class="lm-ad-small">※ 토지·건축물 현황, 가격, 광고 법정 필수 표시사항을 확인한 뒤 게시하세요. 내부 메모·소유주 개인정보는 자동 노출하지 않습니다.</p></div><div class="panel lm-ad-drafts"><h3>④ 저장된 광고 초안</h3><div id="lmAdDrafts"></div></div></section></div>`;
+$ad('lmAdSearch').oninput=e=>{search=e.target.value;showSearch()};$ad('lmAdKind').onchange=e=>{kind=e.target.value;preview()};$ad('lmAdDeal').onchange=e=>{deal=e.target.value;const p=props().find(x=>String(x.id)===String(selected));if(p){const fields=lmAdTradeFields(info(p));$ad('lmAdF_transaction').value=fields.transaction;$ad('lmAdF_price').value=fields.price}preview()};['Title','Description','Contact','Office','Disclosure','Number','BlogUrl'].forEach(k=>$ad('lmAd'+k).oninput=preview);Object.keys(adExtraValues()).forEach(k=>$ad('lmAdF_'+k).oninput=preview);
 $ad('lmAdFindNumber').onclick=()=>{const q=val('lmAdLookup');if(!q)return alert('광고번호를 입력해주세요.');const d=drafts().find(x=>x.number===q);if(!d)return alert('이 브라우저에 저장된 해당 광고번호가 없습니다.');const b=[...$ad('lmAdDrafts').querySelectorAll('[data-open]')].find(x=>x.dataset.open===d.id);if(b)b.click();alert('광고번호 '+q+'에 연결된 매물을 불러왔습니다.'+(d.blogurl?'\n게시글: '+d.blogurl:''))};
 $ad('lmAdSave').onclick=()=>{if(!selected)return alert('먼저 매물을 선택해주세요.');const number=val('lmAdNumber');if(!number)return alert('광고번호를 입력해주세요.');const a=drafts();if(a.some(x=>x.number===number&&x.id!==currentId))return alert('이미 사용 중인 광고번호입니다.');const id=currentId||('ad-'+Date.now()),d={id,propertyId:selected,kind,deal,status:val('lmAdStatus'),updated:new Date().toLocaleString('ko-KR')};['Title','Description','Contact','Office','Disclosure','Number','BlogUrl'].forEach(k=>d[k.toLowerCase()]=val('lmAd'+k));d.extra=adExtraValues();const idx=a.findIndex(x=>x.id===id);if(idx>=0)a[idx]=d;else a.push(d);if(persist(a)){currentId=id;showDrafts();alert('이 브라우저에 광고 초안을 저장했습니다.')}};
-$ad('lmAdCopy').onclick=async()=>{if(!selected)return alert('매물을 선택해주세요.');try{if(!navigator.clipboard.write||typeof ClipboardItem==='undefined')throw Error('서식 복사 미지원');await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([richHtml()],{type:'text/html'}),'text/plain':new Blob([text()],{type:'text/plain'})})]);alert('서식을 포함해 복사했습니다. 네이버 블로그 편집기에 붙여넣어 확인해주세요.')}catch(e){const t=document.createElement('textarea');t.value=text();document.body.appendChild(t);t.select();const ok=document.execCommand('copy');t.remove();alert(ok?'광고문을 복사했습니다.':'자동 복사가 불가능합니다. 미리보기에서 직접 복사해주세요.')}};
+$ad('lmAdCopy').onclick=async()=>{
+  if(!selected)return alert('매물을 선택해주세요.');
+  const html=richHtml();
+  const plain=kind==='old' ? $ad('lmAdPreview').innerText : text();
+  try{
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html':new Blob([html],{type:'text/html'}),
+      'text/plain':new Blob([plain],{type:'text/plain'})
+    })]);
+  }catch(error){
+    const copy=event=>{
+      event.clipboardData.setData('text/html',html);
+      event.clipboardData.setData('text/plain',plain);
+      event.preventDefault();
+    };
+    document.addEventListener('copy',copy);
+    try{
+      if(!document.execCommand('copy'))throw error;
+    }catch{
+      return alert('자동 복사를 사용할 수 없습니다. 미리보기에서 직접 복사해주세요.');
+    }finally{
+      document.removeEventListener('copy',copy);
+    }
+  }
+  alert('서식과 함께 복사했습니다. 네이버 블로그 편집기에 붙여넣어주세요.');
+};
 $ad('lmAdCopyPlain').onclick=async()=>{try{await navigator.clipboard.writeText(text());alert('텍스트를 복사했습니다.')}catch(e){alert('텍스트 복사에 실패했습니다.')}};
 $ad('lmAdDownload').onclick=()=>{if(!selected)return alert('매물을 선택해주세요.');const blob=new Blob([text()],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='랜드메이커_광고문_'+String(selected).replace(/[^\w-]/g,'')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 showSearch();showDrafts();preview();
