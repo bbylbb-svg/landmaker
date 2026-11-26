@@ -4059,14 +4059,10 @@ function lmAdFloorLabel(building){
 function loadP(id){selected=String(id);window.lmPhotoAttachAds?.(selected);currentId=null;const p=props().find(x=>String(x.id)===selected);if(!p)return;const d=info(p);if(p.type==='임대'||p.type==='매매'){deal=p.type==='임대'?'lease':'sale';$ad('lmAdDeal').value=deal}$ad('lmAdSelected').textContent='선택 매물: '+propName(p)+' (원본 매물 연결됨)';$ad('lmAdTitle').value=publicLocation(p).replace(' (상세 지번 비공개)','')+(p.propertyKind?' '+p.propertyKind:'');$ad('lmAdDescription').value='';$ad('lmAdOffice').value='광장공인중개사사무소 · 경기도 시흥시 금오로 475';$ad('lmAdDisclosure').value='대표 백지인 · 등록번호 가 3662-2324';$ad('lmAdContact').value='02-2060-5500 / 010-2382-5600';$ad('lmAdNumber').value='';$ad('lmAdBlogUrl').value='';
 const buildings=p.buildings||[];
 const joined=key=>[...new Set(buildings.map(b=>b[key]).filter(Boolean))].join(' / ');
-const parking=buildings.map((b,i)=>{
-  const counts=[['옥내',b.indoorParking],['옥외',b.outdoorParking]]
-    .filter(([,value])=>/^\d+$/.test(String(value??'').trim()));
-  if(!counts.length)return '';
-  if(buildings.length===1&&counts.length===2)return counts.reduce((sum,[,value])=>sum+Number(value),0)+'대';
-  const prefix=buildings.length>1 ? (b.buildingName||((i+1)+'번째 건물'))+' ' : '';
-  return prefix+counts.map(([label,value])=>label+' '+value+'대').join(' / ');
-}).filter(Boolean).join(' · ');
+const ledgerCounts=buildings.flatMap(b=>[b.indoorParking,b.outdoorParking])
+  .filter(value=>/^\d+$/.test(String(value??'').trim()));
+const ledgerTotal=ledgerCounts.length ? ledgerCounts.reduce((total,value)=>total+Number(value),0) : '?';
+const parking='0대 (건축물대장 '+ledgerTotal+'대)';
 const features=[['호이스트',p.hoist],['전기',p.electricity],['진입차량',p.vehicle]]
   .filter(([,value])=>String(value??'').trim()).map(([label,value])=>label+' '+value).join('\n');
 const f={
@@ -4074,7 +4070,7 @@ const f={
   area:lmAdDefaultArea(p),
   ...lmAdTradeFields(d),
   buildingUse:joined('buildingUse'),
-  floors:[...new Set(buildings.map(lmAdFloorLabel).filter(Boolean))].join(' · ') || '지상1층/지하0층',
+  floors:(buildings[0] && lmAdFloorLabel(buildings[0])) || '지상1층/지하0층',
   moveIn:p.availableDate || '즉시입주협의가능',
   bathrooms:String(p.bathrooms??'').trim() ? String(p.bathrooms).replace(/^(\d+)$/,'$1개') : '1개',
   approval:joined('approvalDate'),
