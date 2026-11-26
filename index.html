@@ -821,7 +821,7 @@ body.lm-list-popup-open #lmRecordPopup{z-index:100002}
 })(typeof window!=='undefined'?window:this);
 
 const CUSTOMER_CATEGORIES=['매수','매도','임대','임차','부동산','소유주','이실장관리♥','김소장관리♣','윤부장 매수■','윤부장 임차■','완료고객','완료'];const STAFF=['이보배','윤혜성','김하영','백지인'],KEY='landmaker-v06';const empty=()=>({customers:[],properties:[],records:[],schedules:[],transactions:[],ownership:[],quick:[],auditLog:[],propertyGroups:[],customerCompletionOverrides:{}});let db=empty();const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),id=()=>((typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2)),today=()=>new Date().toLocaleDateString('en-CA'),save=(submittedForm=null,{keepView=false}={})=>{if((!authToken||!cloudReady)&&!window.lmOfflineEditing){showSaveStatus('로그인 또는 공동저장 연결이 필요합니다.',true);return false}if(submittedForm?._ownerProperty)lmSyncSaleOwnerCustomers(submittedForm._ownerProperty);lmRecordAudit();lmFormDirty=false;clearTimeout(lmDraftTimer);try{sessionStorage.removeItem('lm_customer_draft')}catch{}const pending=queueCloudSave();if(submittedForm?.id==='propertyForm')return pending;if(!keepView)render();return true},get=(type,k)=>db[type].find(x=>x.id===k),staffOptions=(v='')=>STAFF.map(s=>`<option ${s===v?'selected':''}>${s}</option>`).join(''),opts=(type,selected='')=>'<option value="">선택 안 함</option>'+db[type].map(x=>`<option value="${esc(x.id)}" ${x.id===selected?'selected':''}>${esc(x.name||x.title)}</option>`).join(''),formObj=f=>Object.fromEntries(new FormData(f)),matches=(x,q)=>JSON.stringify(x).toLowerCase().includes(q.toLowerCase()),formatLot=p=>[p.dong,p.san?'산':'',p.main,p.sub?'-'+p.sub:''].filter(Boolean).join(' ').replace(' -','-'),close=()=>{$('#detail').classList.add('hidden');document.body.classList.remove('lm-sheet-detail-open','lm-customer-modal-open')};function showSaveStatus(msg,error){let el=document.getElementById('saveStatus');if(!el){el=document.createElement('div');el.id='saveStatus';el.style.cssText='position:fixed;bottom:18px;right:18px;max-width:460px;padding:14px 18px;border-radius:10px;z-index:99;box-shadow:0 3px 14px #0003;font-weight:bold';document.body.appendChild(el)}el.style.background=error?'#fff0ed':'#e6f7eb';el.style.color=error?'#9c2626':'#1b6538';el.textContent=msg;}let tab='home',month=today().slice(0,7),day=today(),editing=null,files=[];
-const menus=[['home','대시보드'],['calendar','일정관리 · 달력'],['customerList','고객목록 · 엑셀형'],['propertyList','매물목록 · 엑셀형'],['sales','매매진행중'],['leases','임대진행중'],['matching','물건 ↔ 고객 매칭'],['customers','고객등록'],['properties','매물등록'],['adManager','블로그 광고관리'],['pcKakao','PC 카톡'],['backup','백업']];function nav(){ $('#nav').innerHTML=menus.map(([k,v])=>`<button class="${tab===k?'active':''}" data-nav="${k}">${v}</button>`).join('')+'<hr><div class="lm-external-links"><a href="https://www.gov.kr/" target="_blank" rel="noopener noreferrer">정부24 ↗</a><a href="https://www.eais.go.kr/" target="_blank" rel="noopener noreferrer">세움터 ↗</a><a href="https://www.iros.go.kr/" target="_blank" rel="noopener noreferrer">등기소 ↗</a><a href="https://www.eum.go.kr/" target="_blank" rel="noopener noreferrer">토지이음 ↗</a><a href="https://gris.gg.go.kr/map/main/grisMapView.do" target="_blank" rel="noopener noreferrer">경기포털 ↗</a><a href="https://rt.molit.go.kr/" target="_blank" rel="noopener noreferrer">부동산 실거래가 조회 ↗</a><a href="https://www.bdsplanet.com/" target="_blank" rel="noopener noreferrer">부동산플래닛 ↗</a></div>';$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(lmFormDirty&&!confirm('고객정보를 아직 저장하지 않았습니다. 입력 내용을 버리고 이동할까요?'))return;lmFormDirty=false;tab=b.dataset.nav;editing=null;if(tab==='properties')window.lmShowPropertyForm=true;if(tab==='quickCustomer'||tab==='quickProperty')editing={quickMode:tab==='quickProperty'?'property':'customer'};close();render()})}function render(){
+const menus=[['home','대시보드'],['contractGuide','계약 구비서류 안내'],['calendar','일정관리 · 달력'],['customerList','고객목록 · 엑셀형'],['propertyList','매물목록 · 엑셀형'],['sales','매매진행중'],['leases','임대진행중'],['matching','물건 ↔ 고객 매칭'],['customers','고객등록'],['properties','매물등록'],['adManager','블로그 광고관리'],['pcKakao','PC 카톡'],['backup','백업']];function nav(){ $('#nav').innerHTML=menus.map(([k,v])=>`<button class="${tab===k?'active':''}" data-nav="${k}">${v}</button>`).join('')+'<hr><div class="lm-external-links"><a href="https://www.gov.kr/" target="_blank" rel="noopener noreferrer">정부24 ↗</a><a href="https://www.eais.go.kr/" target="_blank" rel="noopener noreferrer">세움터 ↗</a><a href="https://www.iros.go.kr/" target="_blank" rel="noopener noreferrer">등기소 ↗</a><a href="https://www.eum.go.kr/" target="_blank" rel="noopener noreferrer">토지이음 ↗</a><a href="https://gris.gg.go.kr/map/main/grisMapView.do" target="_blank" rel="noopener noreferrer">경기포털 ↗</a><a href="https://rt.molit.go.kr/" target="_blank" rel="noopener noreferrer">부동산 실거래가 조회 ↗</a><a href="https://www.bdsplanet.com/" target="_blank" rel="noopener noreferrer">부동산플래닛 ↗</a></div>';$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.dataset.nav==='contractGuide'){lmOpenContractGuide();return}if(lmFormDirty&&!confirm('고객정보를 아직 저장하지 않았습니다. 입력 내용을 버리고 이동할까요?'))return;lmFormDirty=false;tab=b.dataset.nav;editing=null;if(tab==='properties')window.lmShowPropertyForm=true;if(tab==='quickCustomer'||tab==='quickProperty')editing={quickMode:tab==='quickProperty'?'property':'customer'};close();render()})}function render(){
  if(tab==='pcKakao'){nav();void LMKakaoArchive.view(document.querySelector('#view'),lmLoggedInStaff||'직원',lmOpenKakaoRecord);return;}
  // v14: 작성 중 고객 입력폼을 자동 화면 재생성으로부터 보호
  if(lmFormDirty && document.querySelector('#customerForm') && (tab==='customers'||tab==='quick'||tab==='quickCustomer')){return;}
@@ -881,16 +881,119 @@ function fastCustomersView(){
  function find(){const q=$('#lmCustomerQuery').value.trim().toLowerCase();filtered=q?db.customers.filter(x=>[x.name,x.phone,x.mobile,x.note,x.memo,x.category].some(v=>String(v||'').toLowerCase().includes(q))):null;const order=$('#lmCustomerOrder').value;if(order!=='original'){filtered=[...(filtered||db.customers)].sort((a,b)=>order==='recent'?date(b).localeCompare(date(a)):date(a).localeCompare(date(b)))}page=0;draw()}
  $('#lmCustomerFind').onclick=find;$('#lmCustomerQuery').onkeydown=e=>{if(e.key==='Enter')find()};$('#lmCustomerClear').onclick=()=>{$('#lmCustomerQuery').value='';$('#lmCustomerOrder').value='original';filtered=null;page=0;draw()};$('#lmCustomerOrder').onchange=find;$('#lmCustomerPrev').onclick=()=>{page--;draw()};$('#lmCustomerNext').onclick=()=>{page++;draw()};$('#lmCustomerAdd').onclick=()=>{editing={type:'customer',id:null};tab='customers';customersView()};draw();
 }
+function lmTodoFields(task={}){
+ return `<div class="grid"><label>할 일 *<textarea name="content" rows="3" required>${esc(task.content)}</textarea></label>
+ <label>기한<input type="date" name="date" value="${esc(task.date)}"></label>
+ <label>담당직원<select name="staff"><option value="">미지정</option>${staffOptions(task.staff)}</select></label></div>
+ <label style="display:flex;align-items:center;gap:8px"><input style="width:auto" name="pinned" type="checkbox" ${task.pinned?'checked':''}>중요 · 상단에 빨간색으로 고정</label>`;
+}
+function lmTodoRow(task){
+ const key=esc(task.id);
+ return `<div class="lm-todo-item ${task.done&&!task.pinned?'done':''}" ${task.pinned?'style="color:#a51b21;background:#fff0f0;border-left:4px solid #b72a32;padding:8px"':''}>
+ <input type="checkbox" data-todo-done="${key}" ${task.done?'checked':''} aria-label="할 일 완료">
+ <span class="lm-todo-content" style="white-space:pre-wrap;overflow-wrap:anywhere">${task.pinned?'<strong>고정 · </strong>':''}${esc(task.content)}</span>
+ <small>${esc(task.date||'기한 없음')} · ${esc(task.staff||'담당자 미지정')}</small>
+ <button type="button" class="alt" data-todo-edit="${key}">수정</button>
+ <button type="button" class="alt" data-todo-pin="${key}">${task.pinned?'고정 해제':'고정'}</button>
+ <button type="button" class="alt" data-todo-delete="${key}">삭제</button></div>`;
+}
+function lmUpdateTodoList(next,refresh){
+ const previous=db.schedules;
+ db.schedules=next;
+ if(!save(null,{keepView:true})){db.schedules=previous;alert('로그인 또는 공동저장 연결이 필요합니다.');return false}
+ refresh?.();
+ return true;
+}
+function lmSaveTodo(form,task,refresh){
+ const {content,date,staff}=formObj(form);
+ if(!content.trim()){alert('할 일을 입력하세요.');return false}
+ const current=task.id&&get('schedules',task.id);
+ if(task.id&&current?.kind!=='todo'){alert('이 할 일을 찾을 수 없습니다.');return false}
+ const fields={content:content.trim(),date,staff,pinned:form.elements.pinned.checked};
+ const value=current?{...current,...fields}:{...task,...fields,id:id(),kind:'todo',done:false,createdAt:new Date().toISOString()};
+ return lmUpdateTodoList(current?db.schedules.map(item=>item.id===current.id?value:item):[...db.schedules,value],refresh);
+}
+function lmOpenTodoEditor(task,refresh){
+ const title=task.id?'할 일 수정':'할 일 등록';
+ const fromKakao=!!document.querySelector('[data-kakao-link-form]');
+ const panel=fromKakao?document.createElement('div'):lmShowRecordPopup(title);
+ if(fromKakao){
+  document.createDocumentFragment().append(panel);
+  lmOpenWorkPopup(panel,title);
+ }
+ panel.innerHTML=`<form>${lmTodoFields(task)}<button type="submit">할 일 저장</button></form>`;
+ const form=panel.querySelector('form');
+ form.onsubmit=event=>{
+  event.preventDefault();
+  if(lmSaveTodo(form,task)){
+   panel.closest('.lm-record-overlay').querySelector('#lmWorkClose,#lmRecordClose').click();
+   refresh?.();
+  }
+ };
+ form.elements.content.focus();
+}
+function lmBindTodoRows(host,refresh){
+ host.querySelectorAll('[data-todo-done],[data-todo-edit],[data-todo-pin],[data-todo-delete]').forEach(control=>{
+  const action=()=>{
+   const {todoDone,todoEdit,todoPin,todoDelete}=control.dataset;
+   const task=get('schedules',todoDone||todoEdit||todoPin||todoDelete);
+   if(task?.kind!=='todo')return;
+   if(todoEdit){lmOpenTodoEditor(task,refresh);return}
+   if(todoDelete&&!confirm('이 할 일을 삭제할까요?'))return;
+   const changes=todoPin?{pinned:!task.pinned}:{done:control.checked,completedAt:control.checked?new Date().toISOString():null};
+   if(!lmUpdateTodoList(todoDelete?db.schedules.filter(x=>x.id!==task.id):db.schedules.map(x=>x.id===task.id?{...x,...changes}:x),refresh)&&todoDone)control.checked=!!task.done;
+  };
+  if(control.type==='checkbox')control.onchange=action;
+  else control.onclick=action;
+ });
+}
+function lmTodoMarkup(items){
+ return items.map(lmTodoRow).join('')||'<p class="muted">표시할 할 일이 없습니다.</p>';
+}
+function lmContractGuides(){
+ const identity='• 계약 당사자 신분증과 서명 또는 도장을 준비해 주세요. 대리 계약이면 대리인 신분증과 계약 권한이 명시된 위임장, 위임인 확인서류를 사전에 확인합니다.';
+ const personal='• 개인사업자는 대표자 신분증과 기존 사업자등록증이 있으면 준비해 주세요. 계약 당사자 이름과 사업자등록증의 대표자 이름을 확인합니다.';
+ const company='• 법인 등기사항증명서, 사업자등록증, 대표자 신분증을 준비해 주세요. 법인인감과 인감증명서, 사용인감계, 대리인 위임장 등은 서명 방식과 참석자에 따라 미리 확인합니다.';
+ const lease='• 사업장에 새로 사업자등록을 하는 경우 임대차계약서 사본을 보관해 주세요. 인허가 업종은 인허가 서류가 추가될 수 있으니 계약 전에 해당 장소에서 영업할 수 있는지 확인해 주세요.';
+ const sale='• 잔금·등기용 서류는 계약일 서류와 별도로 맞춰 주세요. 매도인은 등기필정보와 부동산 매도용 인감증명서 등을, 매수인은 주민등록등(초)본 또는 법인 등기사항증명서 등 본인 확인 서류를 준비합니다. 발급일, 기재 사항과 추가서류는 등기 담당 법무사에게 확인해 주세요.';
+ return [
+  ['개인사업자 임대차',identity,personal,lease],
+  ['개인사업자 매매',identity,personal,sale],
+  ['법인사업자 임대차',identity,company,lease],
+  ['법인사업자 매매',identity,company,sale],
+  ['일반 주택 전세·월세',identity,'• 임대인과 등기상 소유자가 일치하는지 확인합니다. 중개사무소에서 최신 등기사항증명서와 중개대상물 확인·설명서를 함께 확인합니다.','• 전입신고·확정일자와 임대차 신고는 대상 및 방법을 확인해 주세요.'],
+  ['일반 주택 매매',identity,sale]
+ ];
+}
+function lmOpenContractGuide(){
+ const host=lmShowRecordPopup('계약 구비서류 안내');
+ for(const [title,...items] of lmContractGuides()){
+  const section=document.createElement('details');
+  const summary=document.createElement('summary');summary.textContent=title;
+  const content=document.createElement('p');content.style.whiteSpace='pre-wrap';
+  content.textContent=[title+' 구비서류 안내',...items,'공동명의·대리인·신탁 등 계약 조건에 따라 추가서류가 필요할 수 있습니다.'].join('\n');
+  const button=document.createElement('button');button.type='button';button.textContent='안내문 복사';
+  const feedback=document.createElement('small');feedback.setAttribute('role','status');
+  button.onclick=async()=>{try{await navigator.clipboard.writeText(content.textContent);feedback.textContent=' 복사했어요.'}catch{feedback.textContent=' 문구를 선택해 직접 복사해 주세요.'}};
+  section.append(summary,content,button,feedback);host.append(section);
+ }
+ const sources=document.createElement('p');
+ sources.innerHTML='<a href="https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7778&amp;mi=2442" target="_blank" rel="noopener">국세청 사업자등록 안내</a> · <a href="https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=3&amp;cciNo=1&amp;cnpClsNo=3&amp;csmSeq=566&amp;popMenu=ov" target="_blank" rel="noopener">소유권 이전등기 제출서류</a> · <a href="https://easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=2&amp;cciNo=2&amp;cnpClsNo=2&amp;csmSeq=629" target="_blank" rel="noopener">주택 임대차계약서 작성</a>';
+ host.append(sources);
+}
 function homeView(){
  const due=db.schedules.filter(x=>x.kind!=='todo'&&x.date===today());
  const follow=db.schedules.filter(x=>x.kind!=='todo'&&x.date>='2026-11-01'&&x.date<today()&&!x.done);
  const todos=db.schedules.filter(x=>x.kind==='todo'&&!x.done).sort((a,b)=>String(a.date||'9999').localeCompare(String(b.date||'9999')));
+ const pinned=db.schedules.filter(x=>x.kind==='todo'&&x.pinned);
  const stats=[['오늘일정',due.length,'calendar'],['미완료 지난일정',follow.length,'calendar'],['할일',todos.length,'calendar'],['고객',db.customers.length,'customers'],['전체매물',db.properties.length,'properties'],['매매진행',db.properties.filter(x=>x.saleStatus==='진행중').length,'sales'],['임대진행',db.properties.filter(x=>x.leaseStatus==='진행중').length,'leases']];
- $('#view').innerHTML=`<h2>대시보드</h2><div class="lm-dashboard-stats">${stats.map(([k,v,t])=>`<button type="button" class="stat stat-link" data-dashboard-target="${t}">${k}<b>${v}</b></button>`).join('')}</div><div class="lm-dashboard-columns"><div class="panel"><h2>오늘일정</h2>${due.map(x=>`<p><button class="alt" data-schedule="${esc(x.id)}">${esc(x.content)}</button> · ${esc(x.staff||'')}</p>`).join('')||'<p class="muted">오늘 등록된 일정이 없습니다.</p>'}<button data-goto="calendar">달력 열기</button></div><div class="panel"><h2>할일 <small class="muted">미완료 ${todos.length}건</small></h2>${todos.map(x=>`<label class="lm-dash-todo"><input type="checkbox" data-dash-todo="${esc(x.id)}" aria-label="완료 체크"><span>${esc(x.content)}<small class="muted">${esc(x.date||'기한 없음')} · ${esc(x.staff||'')}</small></span></label>`).join('')||'<p class="muted">미완료 할 일이 없습니다.</p>'}<button data-goto="calendar">할 일 추가</button></div><div class="panel"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><h2>후속 확인이 필요한 지난 일정</h2><button type="button" id="lmFollowBulkDone" disabled>선택 완료처리</button></div>${follow.length?`<label class="lm-dash-todo"><input type="checkbox" id="lmFollowSelectAll" aria-label="지난 일정 전체 선택"><span>전체 선택 (${follow.length}건)</span></label>`:''}${follow.map(x=>`<label class="lm-dash-todo"><input type="checkbox" data-follow-id="${esc(x.id)}" aria-label="일정 선택"><span>${esc(x.date)} · ${esc(x.content)} · ${esc(x.staff||'')}</span></label>`).join('')||'<p class="muted">없음</p>'}</div></div>`;
+ $('#view').innerHTML=`<h2>대시보드</h2><div class="row"><button type="button" id="lmDashboardTodo">+ 할 일 등록</button><button type="button" class="alt" id="lmContractGuide">계약 구비서류 안내</button></div>${pinned.length?`<section class="panel"><h2 style="color:#a51b21">중요 · 상시 기억할 할 일</h2>${lmTodoMarkup(pinned)}</section>`:''}<div class="lm-dashboard-stats">${stats.map(([k,v,t])=>`<button type="button" class="stat stat-link" data-dashboard-target="${t}">${k}<b>${v}</b></button>`).join('')}</div><div class="lm-dashboard-columns"><div class="panel"><h2>오늘일정</h2>${due.map(x=>`<p><button class="alt" data-schedule="${esc(x.id)}">${esc(x.content)}</button> · ${esc(x.staff||'')}</p>`).join('')||'<p class="muted">오늘 등록된 일정이 없습니다.</p>'}<button data-goto="calendar">달력 열기</button></div><div class="panel"><h2>할일 <small class="muted">미완료 ${todos.length}건</small></h2>${lmTodoMarkup(todos.filter(x=>!x.pinned))}</div><div class="panel"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><h2>후속 확인이 필요한 지난 일정</h2><button type="button" id="lmFollowBulkDone" disabled>선택 완료처리</button></div>${follow.length?`<label class="lm-dash-todo"><input type="checkbox" id="lmFollowSelectAll" aria-label="지난 일정 전체 선택"><span>전체 선택 (${follow.length}건)</span></label>`:''}${follow.map(x=>`<label class="lm-dash-todo"><input type="checkbox" data-follow-id="${esc(x.id)}" aria-label="일정 선택"><span>${esc(x.date)} · ${esc(x.content)} · ${esc(x.staff||'')}</span></label>`).join('')||'<p class="muted">없음</p>'}</div></div>`;
  $('#view').querySelectorAll('[data-dashboard-target]').forEach(b=>b.onclick=()=>{tab=b.dataset.dashboardTarget;editing=null;close();render();window.scrollTo(0,0)});
  $('#view').querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>{tab=b.dataset.goto;render()});
  $('#view').querySelectorAll('[data-schedule]').forEach(b=>b.onclick=()=>openSchedule(b.dataset.schedule));
- $('#view').querySelectorAll('[data-dash-todo]').forEach(b=>b.onchange=()=>{const x=db.schedules.find(x=>x.id===b.dataset.dashTodo);if(!x)return;x.done=b.checked;x.completedAt=b.checked?new Date().toISOString():null;save()});
+ $('#lmDashboardTodo').onclick=()=>lmOpenTodoEditor({},homeView);
+ $('#lmContractGuide').onclick=lmOpenContractGuide;
+ lmBindTodoRows($('#view'),homeView);
  const followBoxes=[...$('#view').querySelectorAll('[data-follow-id]')];
  const followAll=$('#lmFollowSelectAll'),followBulk=$('#lmFollowBulkDone');
  const syncFollowSelection=()=>{const count=followBoxes.filter(b=>b.checked).length;followBulk.disabled=count===0;followBulk.textContent=count?`선택 ${count}건 완료처리`:'선택 완료처리';if(followAll){followAll.checked=followBoxes.length>0&&count===followBoxes.length;followAll.indeterminate=count>0&&count<followBoxes.length}};
@@ -2170,7 +2273,7 @@ function lmHolidayName(date){
  const special2026={'2026-02-16':'설날 연휴','2026-02-17':'설날','2026-02-18':'설날 연휴','2026-03-02':'삼일절 대체공휴일','2026-05-24':'부처님오신날','2026-05-25':'대체공휴일','2026-06-03':'지방선거일','2026-08-17':'광복절 대체공휴일','2026-09-24':'추석 연휴','2026-09-25':'추석','2026-09-26':'추석 연휴','2026-10-05':'개천절 대체공휴일','2026-10-09':'한글날'};
  return special2026[date]||fixed[date.slice(5)]||'';
 }
-function calendarView(){const [y,m]=month.split('-').map(Number),first=new Date(y,m-1,1),start=first.getDay(),days=new Date(y,m,0).getDate();let cells='';for(let i=0;i<42;i++){const n=i-start+1,valid=n>0&&n<=days,d=`${month}-${String(n).padStart(2,'0')}`,items=db.schedules.filter(x=>x.kind!=='todo'&&x.date&&x.date<=d&&d<=(x.endDate||x.date)),holiday=valid?lmHolidayName(d):'',weekday=i%7;cells+=`<div class="day ${valid?'':'off'} ${d===today()?'today':''} ${valid&&(weekday===0||holiday)?'lm-sunday-holiday':valid&&weekday===6?'lm-saturday':''}" ${valid?`data-day="${d}"`:''} ${holiday?`title="${holiday}"`:''}><b>${valid?n:''}</b>${holiday?`<span class="lm-holiday-label">${holiday}</span>`:''}${valid&&items.length?`<span class="lm-cal-count" title="일정 ${items.length}건">● ${items.length}건</span>`:''}</div>`}$('#view').innerHTML=`<div class="panel"><div class="row"><h2>일정관리 · 월간 달력</h2><button class="alt" id="prevYear" title="1년 전">« 1년 전</button><button class="alt" id="prevMonth" title="이전 달">◀</button><label class="cal-jump-label">연도 <input id="calendarYear" type="number" min="1900" max="2100" step="1" value="${y}" aria-label="이동할 연도"></label><label class="cal-jump-label">월 <input id="calendarMonth" type="number" min="1" max="12" step="1" value="${m}" aria-label="이동할 월"></label><button class="alt" id="calendarGo" type="button">이동</button><button class="alt" id="nextMonth" title="다음 달">▶</button><button class="alt" id="nextYear" title="1년 후">1년 후 »</button><button class="alt" id="thisMonth">이번 달</button></div><div class="lm-calendar-layout"><div class="calendar">${['일','월','화','수','목','금','토'].map((x,i)=>`<div class="lm-weekday ${i===0?'lm-sunday-holiday':i===6?'lm-saturday':''}">${x}</div>`).join('')}${cells}</div><aside class="lm-calendar-agenda" id="lmCalendarAgenda" aria-live="polite"></aside></div><p class="muted">날짜를 선택하면 오른쪽에 해당 날짜의 일정이 표시됩니다.</p></div><div class="panel" id="lmSchedulePanel"><h2>일정 등록·수정</h2><form id="scheduleForm"><input type="hidden" name="id"><div data-schedule-links hidden></div><label>제목 *<textarea name="content" rows="1" required style="min-height:40px"></textarea></label><div class="grid"><label>시작일 *<input name="date" type="date" max="9999-12-31" required value="${day}"></label><label>시작시간<input name="time" type="time"></label><label>종료일<input name="endDate" type="date" max="9999-12-31"></label><label>종료시간<input name="endTime" type="time"></label><label>종일 <input name="allDay" type="checkbox" style="width:auto"></label><label>장소<input name="place" placeholder="예: 시흥시 과림동"></label><div class="lm-schedule-assignees"><strong>담당직원 (복수 선택)</strong><div class="lm-staff-checks">${STAFF.map(st=>`<label><input type="checkbox" name="scheduleStaff" value="${esc(st)}"> ${esc(st)}</label>`).join("")}</div></div><div><label>연결 고객 검색<input type="search" data-schedule-customer-search placeholder="이름 · 전화번호 · 인물코드" autocomplete="off"></label><label>연결 고객<select name="customerId"></select></label><small data-schedule-customer-count aria-live="polite"></small></div></div><div class="grid"><label class="schedule-color-field">색상<input name="color" type="hidden" value="#d6eceb"><span class="schedule-colors" role="group" aria-label="일정 색상 선택">${[['#d6eceb','민트'],['#f9d8dc','분홍'],['#ffdfae','주황'],['#fff2a8','노랑'],['#d9edba','연두'],['#c9dafa','파랑'],['#e6d5f7','보라'],['#e5e7eb','회색'],['#f5b7a5','코랄'],['#b8dfe9','하늘']].map(([c,n])=>`<button type="button" class="schedule-swatch" data-color="${c}" title="${n}" aria-label="${n}" style="background:${c}"></button>`).join('')}</span></label><label>스티커<select name="sticker"><option value="">없음</option><option>⭐</option><option>✔️</option><option>📌</option><option>🏠</option><option>🏭</option><option>📞</option><option>🤝</option><option>🔔</option></select></label><label>중요 일정 <input name="important" type="checkbox" style="width:auto"></label><label>지도 링크<input name="mapUrl" type="url" placeholder="지도 공유 링크 붙여넣기"></label></div><div class="row"><button type="button" class="alt" id="scheduleMapOpen">장소 지도에서 찾기</button><span class="muted">지도 검색은 새 창으로 열립니다. 링크는 직접 붙여넣을 수 있어요.</span></div><label>설명<textarea name="description" rows="4" maxlength="10000"></textarea></label><label>알림<select name="alarmMinutes"><option value="">알림 없음</option>${[[0,'일정 시작 시'],[5,'5분 전'],[10,'10분 전'],[15,'15분 전'],[30,'30분 전'],[60,'1시간 전'],[120,'2시간 전'],[1440,'1일 전'],[2880,'2일 전'],[10080,'1주 전']].map(([minutes,label])=>`<option value="${minutes}">${label}</option>`).join('')}</select></label><div class="row"><button>일정 저장</button><button class="alt" type="button" id="scheduleNew">새로 입력</button></div></form></div><div class="panel" id="lmTodoPanel"><div class="row" style="justify-content:space-between;align-items:center"><h2>할 일 관리</h2><label style="width:auto;display:flex;align-items:center;gap:8px"><input type="checkbox" id="todoShowDone" style="width:auto"> 완료한 일도 보기</label></div><form id="todoForm"><div class="grid"><label>할 일 *<input name="content" placeholder="예: 과림동 매도인에게 전화" required maxlength="500"></label><label>기한<input type="date" max="9999-12-31" name="date" value="${today()}"></label><label>담당직원<select name="staff">${staffOptions()}</select></label></div><div class="row"><button type="submit">할 일 추가</button><span class="muted">완료 체크하면 미완료 목록에서 사라집니다. 기존 일정은 유지됩니다.</span></div></form><div class="row"><input id="todoSearch" placeholder="할 일 검색" aria-label="할 일 검색"><select id="todoStaff"><option value="">전체 담당자</option>${STAFF.map(s=>`<option>${s}</option>`).join('')}</select></div><div id="todoRows" aria-live="polite"></div></div>`;// 일정 입력과 할 일 관리는 화면에 길게 펼치지 않고 팝업으로 엽니다.
+function calendarView(){const [y,m]=month.split('-').map(Number),first=new Date(y,m-1,1),start=first.getDay(),days=new Date(y,m,0).getDate();let cells='';for(let i=0;i<42;i++){const n=i-start+1,valid=n>0&&n<=days,d=`${month}-${String(n).padStart(2,'0')}`,items=db.schedules.filter(x=>x.kind!=='todo'&&x.date&&x.date<=d&&d<=(x.endDate||x.date)),holiday=valid?lmHolidayName(d):'',weekday=i%7;cells+=`<div class="day ${valid?'':'off'} ${d===today()?'today':''} ${valid&&(weekday===0||holiday)?'lm-sunday-holiday':valid&&weekday===6?'lm-saturday':''}" ${valid?`data-day="${d}"`:''} ${holiday?`title="${holiday}"`:''}><b>${valid?n:''}</b>${holiday?`<span class="lm-holiday-label">${holiday}</span>`:''}${valid&&items.length?`<span class="lm-cal-count" title="일정 ${items.length}건">● ${items.length}건</span>`:''}</div>`}$('#view').innerHTML=`<div class="panel"><div class="row"><h2>일정관리 · 월간 달력</h2><button class="alt" id="prevYear" title="1년 전">« 1년 전</button><button class="alt" id="prevMonth" title="이전 달">◀</button><label class="cal-jump-label">연도 <input id="calendarYear" type="number" min="1900" max="2100" step="1" value="${y}" aria-label="이동할 연도"></label><label class="cal-jump-label">월 <input id="calendarMonth" type="number" min="1" max="12" step="1" value="${m}" aria-label="이동할 월"></label><button class="alt" id="calendarGo" type="button">이동</button><button class="alt" id="nextMonth" title="다음 달">▶</button><button class="alt" id="nextYear" title="1년 후">1년 후 »</button><button class="alt" id="thisMonth">이번 달</button></div><div class="lm-calendar-layout"><div class="calendar">${['일','월','화','수','목','금','토'].map((x,i)=>`<div class="lm-weekday ${i===0?'lm-sunday-holiday':i===6?'lm-saturday':''}">${x}</div>`).join('')}${cells}</div><aside class="lm-calendar-agenda" id="lmCalendarAgenda" aria-live="polite"></aside></div><p class="muted">날짜를 선택하면 오른쪽에 해당 날짜의 일정이 표시됩니다.</p></div><div class="panel" id="lmSchedulePanel"><h2>일정 등록·수정</h2><form id="scheduleForm"><input type="hidden" name="id"><div data-schedule-links hidden></div><label>제목 *<textarea name="content" rows="1" required style="min-height:40px"></textarea></label><div class="grid"><label>시작일 *<input name="date" type="date" max="9999-12-31" required value="${day}"></label><label>시작시간<input name="time" type="time"></label><label>종료일<input name="endDate" type="date" max="9999-12-31"></label><label>종료시간<input name="endTime" type="time"></label><label>종일 <input name="allDay" type="checkbox" style="width:auto"></label><label>장소<input name="place" placeholder="예: 시흥시 과림동"></label><div class="lm-schedule-assignees"><strong>담당직원 (복수 선택)</strong><div class="lm-staff-checks">${STAFF.map(st=>`<label><input type="checkbox" name="scheduleStaff" value="${esc(st)}"> ${esc(st)}</label>`).join("")}</div></div><div><label>연결 고객 검색<input type="search" data-schedule-customer-search placeholder="이름 · 전화번호 · 인물코드" autocomplete="off"></label><label>연결 고객<select name="customerId"></select></label><small data-schedule-customer-count aria-live="polite"></small></div></div><div class="grid"><label class="schedule-color-field">색상<input name="color" type="hidden" value="#d6eceb"><span class="schedule-colors" role="group" aria-label="일정 색상 선택">${[['#d6eceb','민트'],['#f9d8dc','분홍'],['#ffdfae','주황'],['#fff2a8','노랑'],['#d9edba','연두'],['#c9dafa','파랑'],['#e6d5f7','보라'],['#e5e7eb','회색'],['#f5b7a5','코랄'],['#b8dfe9','하늘']].map(([c,n])=>`<button type="button" class="schedule-swatch" data-color="${c}" title="${n}" aria-label="${n}" style="background:${c}"></button>`).join('')}</span></label><label>스티커<select name="sticker"><option value="">없음</option><option>⭐</option><option>✔️</option><option>📌</option><option>🏠</option><option>🏭</option><option>📞</option><option>🤝</option><option>🔔</option></select></label><label>중요 일정 <input name="important" type="checkbox" style="width:auto"></label><label>지도 링크<input name="mapUrl" type="url" placeholder="지도 공유 링크 붙여넣기"></label></div><div class="row"><button type="button" class="alt" id="scheduleMapOpen">장소 지도에서 찾기</button><span class="muted">지도 검색은 새 창으로 열립니다. 링크는 직접 붙여넣을 수 있어요.</span></div><label>설명<textarea name="description" rows="4" maxlength="10000"></textarea></label><label>알림<select name="alarmMinutes"><option value="">알림 없음</option>${[[0,'일정 시작 시'],[5,'5분 전'],[10,'10분 전'],[15,'15분 전'],[30,'30분 전'],[60,'1시간 전'],[120,'2시간 전'],[1440,'1일 전'],[2880,'2일 전'],[10080,'1주 전']].map(([minutes,label])=>`<option value="${minutes}">${label}</option>`).join('')}</select></label><div class="row"><button>일정 저장</button><button class="alt" type="button" id="scheduleNew">새로 입력</button></div></form></div><div class="panel" id="lmTodoPanel"><div class="row" style="justify-content:space-between;align-items:center"><h2>할 일 관리</h2><label style="width:auto;display:flex;align-items:center;gap:8px"><input type="checkbox" id="todoShowDone" style="width:auto"> 완료한 일도 보기</label></div><form id="todoForm">${lmTodoFields()}<button type="submit">할 일 추가</button></form><div class="row"><input id="todoSearch" placeholder="할 일 검색" aria-label="할 일 검색"><select id="todoStaff"><option value="">전체 담당자</option>${STAFF.map(s=>`<option>${s}</option>`).join('')}</select></div><div id="todoRows" aria-live="polite"></div></div>`;// 일정 입력과 할 일 관리는 화면에 길게 펼치지 않고 팝업으로 엽니다.
 const schedulePanel=$('#lmSchedulePanel'),todoPanel=$('#lmTodoPanel');
 function lmEnablePopupDrag(overlay){
  const dialog=overlay.querySelector('.lm-record-dialog');
@@ -2220,7 +2323,16 @@ const lmDefaultDay=day.startsWith(month)?day:(month===today().slice(0,7)?today()
 db.schedules=o.id?previous.map(x=>x.id===o.id?{...x,...o}:x):[...previous,{...o,id:id()}];
 day=o.date;month=o.date.slice(0,7);
 if(!save()){db.schedules=previous;day=previousDay;month=previousMonth;alert('로그인 또는 공동저장 연결이 필요합니다.');return}
-$('#lmWorkClose')?.click();lmScheduleFeedback(o.id?'일정 수정 내용이 화면에 반영되었습니다.':'일정이 화면에 등록되었습니다.');};$('#scheduleNew').onclick=()=>{$('#scheduleForm').reset();$('#scheduleForm [name=id]').value='';sf._selectScheduleCustomer('');lmSetScheduleLinks(sf,{});selectScheduleColor(sf.elements.color.value);syncAllDay()};function drawTodo(){const q=$('#todoSearch').value.trim().toLowerCase(),staff=$('#todoStaff').value,showDone=$('#todoShowDone').checked;const items=db.schedules.filter(x=>x.kind==='todo'&&(showDone||!x.done)&&(!staff||x.staff===staff)&&(!q||[x.content,x.staff,x.date].join(' ').toLowerCase().includes(q))).sort((a,b)=>Number(!!a.done)-Number(!!b.done)||String(a.date||'9999').localeCompare(String(b.date||'9999')));$('#todoRows').innerHTML='<p class="muted">미완료 '+db.schedules.filter(x=>x.kind==='todo'&&!x.done).length+'건 · 현재 표시 '+items.length+'건</p>'+(items.length?items.map(x=>`<div class="lm-todo-item ${x.done?'done':''}"><input type="checkbox" data-todo-done="${esc(x.id)}" ${x.done?'checked':''} aria-label="할 일 완료"><span class="lm-todo-content">${esc(x.content)}</span><small>${esc(x.date||'기한 없음')} · ${esc(x.staff||'담당자 미지정')}</small><button type="button" class="alt" data-todo-delete="${esc(x.id)}">삭제</button></div>`).join(''):'<p class="muted">표시할 할 일이 없습니다.</p>');$('#todoRows').querySelectorAll('[data-todo-done]').forEach(el=>el.onchange=()=>{const item=db.schedules.find(x=>x.id===el.dataset.todoDone);if(!item)return;item.done=el.checked;item.completedAt=el.checked?new Date().toISOString():null;save()});$('#todoRows').querySelectorAll('[data-todo-delete]').forEach(el=>el.onclick=()=>{if(!confirm('이 할 일을 삭제할까요?'))return;db.schedules=db.schedules.filter(x=>x.id!==el.dataset.todoDelete);save()})}$('#todoForm').onsubmit=e=>{e.preventDefault();const o=formObj(e.target);if(!String(o.content||'').trim())return;db.schedules.push({...o,id:id(),kind:'todo',done:false,createdAt:new Date().toISOString()});save()};$('#todoSearch').oninput=drawTodo;$('#todoStaff').onchange=drawTodo;$('#todoShowDone').onchange=drawTodo;drawTodo();function shift(n){const target=new Date(y,m-1+n,1);month=`${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}`;render()}}
+$('#lmWorkClose')?.click();lmScheduleFeedback(o.id?'일정 수정 내용이 화면에 반영되었습니다.':'일정이 화면에 등록되었습니다.');};$('#scheduleNew').onclick=()=>{$('#scheduleForm').reset();$('#scheduleForm [name=id]').value='';sf._selectScheduleCustomer('');lmSetScheduleLinks(sf,{});selectScheduleColor(sf.elements.color.value);syncAllDay()};function drawTodo(){
+ const q=$('#todoSearch').value.trim().toLowerCase(),staff=$('#todoStaff').value,showDone=$('#todoShowDone').checked;
+ const tasks=db.schedules.filter(x=>x.kind==='todo');
+ const pinned=tasks.filter(x=>x.pinned);
+ const normal=tasks.filter(x=>!x.pinned&&(showDone||!x.done)&&(!staff||x.staff===staff)&&(!q||[x.content,x.staff,x.date].join(' ').toLowerCase().includes(q))).sort((a,b)=>Number(!!a.done)-Number(!!b.done)||String(a.date||'9999').localeCompare(String(b.date||'9999')));
+ const host=$('#todoRows');
+ host.innerHTML=(pinned.length?'<h3 style="color:#a51b21">중요 · 상단 고정</h3>'+lmTodoMarkup(pinned):'')+lmTodoMarkup(normal);
+ lmBindTodoRows(host,drawTodo);
+}
+$('#todoForm').onsubmit=event=>{event.preventDefault();if(lmSaveTodo(event.target,{},drawTodo))event.target.reset()};$('#todoSearch').oninput=drawTodo;$('#todoStaff').onchange=drawTodo;$('#todoShowDone').onchange=drawTodo;drawTodo();function shift(n){const target=new Date(y,m-1+n,1);month=`${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}`;render()}}
 function lmScheduleFeedback(message){
  const el=document.createElement('div');el.className='lm-schedule-feedback';el.setAttribute('role','status');el.textContent=message+' 서버 저장 상태는 상단 표시를 확인해 주세요.';
  document.body.appendChild(el);setTimeout(()=>el.remove(),4200);
@@ -2340,7 +2452,7 @@ function lmOpenKakaoRecord(message,scope){
  <label>담당직원<select name="staff"><option value="">선택 안 함</option>${staffOptions(existing?existing.staff:scope)}</select></label>
  <label>기록일<input name="date" type="date" required></label>
  <label>연결할 내용<textarea name="content" rows="7" required></textarea></label>
- <div class="row"><button type="submit">연결 저장</button><button type="button" class="alt" data-kakao-schedule>일정 등록</button></div><p role="status"></p>
+ <div class="row"><button type="submit">연결 저장</button><button type="button" class="alt" data-kakao-schedule>일정 등록</button><button type="button" class="alt" data-kakao-todo>할 일 등록</button></div><p role="status"></p>
  </form>
  <form data-kakao-customer-form hidden>
  <h3>신규 고객 등록</h3>
@@ -2475,6 +2587,10 @@ function lmOpenKakaoRecord(message,scope){
    selectProperty(property.id);
    showPropertyForm(false);
    status.textContent='신규 매물을 저장하고 선택했습니다.';
+ };
+ host.querySelector('[data-kakao-todo]').onclick=()=>{
+   const {customerId,propertyId,content,staff}=formObj(form);
+   lmOpenTodoEditor({customerId,propertyId,content,staff},()=>{status.textContent='할 일을 등록했어요.'});
  };
  host.querySelector('[data-kakao-schedule]').onclick=()=>{
    const {customerId,propertyId,content,staff}=formObj(form);
