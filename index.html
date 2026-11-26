@@ -989,8 +989,9 @@ function lmContractGuides(){
    '',
    '오실 때 아래 준비물을 챙겨 주세요.',
    '1. 매수인 신분증',
-   '2. 주민등록등본 또는 초본 1통 (담당 법무사 안내에 따라 발급)',
-   '3. 도장 (등기 위임장 날인이 필요한 경우)',
+   '2. 주민등록등본 1통 (초본이 필요한 경우 담당 법무사가 안내드립니다.)',
+   '3. 도장 (날인이 필요한 경우)',
+   '4. 매매계약서',
    '',
    '잔금 이체가 가능하도록 이체 한도를 미리 확인해 주세요. 공동명의나 대리인 방문 시 미리 연락 주세요.'
   ].join('\n')],
@@ -1002,17 +1003,23 @@ function lmContractGuides(){
    '오실 때 아래 준비물을 챙겨 주세요.',
    '1. 법인 등기사항증명서',
    '2. 대표자 신분증',
-   '3. 법인인감도장 (등기 위임장 날인이 필요한 경우)',
+   '3. 법인인감도장 (날인이 필요한 경우)',
+   '4. 매매계약서',
    '',
    '잔금 이체 한도를 미리 확인해 주세요. 법인인감증명서나 위임장 등 추가서류는 담당 법무사 안내에 따라 준비해 주세요.'
   ].join('\n')],
   ['매도인 잔금 준비 서류 (개인)',[
    '안녕하세요. 광장부동산입니다.',
    '매도인 잔금 준비 서류 안내드립니다.',
+   '[잔금일] [시간]에 [매물 주소·층/호] 잔금 일정이 있습니다.',
+   '오실 곳은 광장부동산(과림동 360-15번지)입니다.',
+   '',
    '1. 부동산 매도용 인감증명서 1통 (매매계약서 지참)',
    '2. 등기권리증 또는 등기필정보',
    '3. 인감도장',
-   '4. 주민등록초본 1통 (주소 변동사항 포함)',
+   '4. 주민등록등본 1통 (등기부 주소와 다르면 종전 주소가 포함된 주민등록초본 준비)',
+   '5. 매매계약서',
+   '6. 공과금·관리비 정산 자료와 열쇠 (해당되는 경우)',
    '',
    '공동명의이거나 등기권리증을 찾기 어려우시면 미리 연락 주세요.'
   ].join('\n')]
@@ -1030,7 +1037,7 @@ function lmOpenContractGuide(){
   section.append(summary,content,button,feedback);host.append(section);
  }
  const sources=document.createElement('p');
- sources.innerHTML='<a href="https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7778&amp;mi=2442" target="_blank" rel="noopener">국세청 사업자등록 안내</a> · <a href="https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=3&amp;cciNo=1&amp;cnpClsNo=3&amp;csmSeq=566&amp;popMenu=ov" target="_blank" rel="noopener">소유권 이전등기 제출서류</a> · <a href="https://easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=2&amp;cciNo=2&amp;cnpClsNo=2&amp;csmSeq=629" target="_blank" rel="noopener">주택 임대차계약서 작성</a>';
+ sources.innerHTML='<a href="https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7778&amp;mi=2442" target="_blank" rel="noopener">국세청 사업자등록 안내</a> · <a href="https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=3&amp;cciNo=1&amp;cnpClsNo=3&amp;csmSeq=566&amp;popMenu=ov" target="_blank" rel="noopener">소유권 이전등기 제출서류</a> · <a href="https://easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=2&amp;cciNo=2&amp;cnpClsNo=2&amp;csmSeq=629" target="_blank" rel="noopener">주택 임대차계약서 작성</a> · <a href="https://www.myhome.go.kr/hws/portal/cont/selectHouseTransType2View.do" target="_blank" rel="noopener">마이홈 주택매매 안내</a>';
  host.append(sources);
 }
 function homeView(){
