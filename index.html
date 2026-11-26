@@ -881,10 +881,14 @@ function fastCustomersView(){
  function find(){const q=$('#lmCustomerQuery').value.trim().toLowerCase();filtered=q?db.customers.filter(x=>[x.name,x.phone,x.mobile,x.note,x.memo,x.category].some(v=>String(v||'').toLowerCase().includes(q))):null;const order=$('#lmCustomerOrder').value;if(order!=='original'){filtered=[...(filtered||db.customers)].sort((a,b)=>order==='recent'?date(b).localeCompare(date(a)):date(a).localeCompare(date(b)))}page=0;draw()}
  $('#lmCustomerFind').onclick=find;$('#lmCustomerQuery').onkeydown=e=>{if(e.key==='Enter')find()};$('#lmCustomerClear').onclick=()=>{$('#lmCustomerQuery').value='';$('#lmCustomerOrder').value='original';filtered=null;page=0;draw()};$('#lmCustomerOrder').onchange=find;$('#lmCustomerPrev').onclick=()=>{page--;draw()};$('#lmCustomerNext').onclick=()=>{page++;draw()};$('#lmCustomerAdd').onclick=()=>{editing={type:'customer',id:null};tab='customers';customersView()};draw();
 }
+function lmTodoStaff(task){
+ return Array.isArray(task.staffs)?task.staffs:String(task.staff||'').split(/[,，、]/).map(name=>name.trim()).filter(Boolean);
+}
 function lmTodoFields(task={}){
+ const assigned=lmTodoStaff(task);
  return `<div class="grid"><label>할 일 *<textarea name="content" rows="3" required>${esc(task.content)}</textarea></label>
  <label>기한<input type="date" name="date" value="${esc(task.date)}"></label>
- <label>담당직원<select name="staff"><option value="">미지정</option>${staffOptions(task.staff)}</select></label></div>
+ <fieldset class="lm-staff-field"><legend>담당직원 (복수 선택)</legend><div class="lm-staff-checks">${[...new Set([...STAFF,...assigned])].map(name=>`<label><input type="checkbox" name="todoStaff" value="${esc(name)}" ${assigned.includes(name)?'checked':''}>${esc(name)}</label>`).join('')}</div></fieldset></div>
  <label style="display:flex;align-items:center;gap:8px"><input style="width:auto" name="pinned" type="checkbox" ${task.pinned?'checked':''}>중요 · 상단에 빨간색으로 고정</label>`;
 }
 function lmTodoRow(task){
@@ -892,7 +896,7 @@ function lmTodoRow(task){
  return `<div class="lm-todo-item ${task.done&&!task.pinned?'done':''}" ${task.pinned?'style="color:#a51b21;background:#fff0f0;border-left:4px solid #b72a32;padding:8px"':''}>
  <input type="checkbox" data-todo-done="${key}" ${task.done?'checked':''} aria-label="할 일 완료">
  <span class="lm-todo-content" style="white-space:pre-wrap;overflow-wrap:anywhere">${task.pinned?'<strong>고정 · </strong>':''}${esc(task.content)}</span>
- <small>${esc(task.date||'기한 없음')} · ${esc(task.staff||'담당자 미지정')}</small>
+ <small>${esc(task.date||'기한 없음')} · ${esc(lmTodoStaff(task).join(', ')||'담당자 미지정')}</small>
  <button type="button" class="alt" data-todo-edit="${key}">수정</button>
  <button type="button" class="alt" data-todo-pin="${key}">${task.pinned?'고정 해제':'고정'}</button>
  <button type="button" class="alt" data-todo-delete="${key}">삭제</button></div>`;
@@ -905,11 +909,13 @@ function lmUpdateTodoList(next,refresh){
  return true;
 }
 function lmSaveTodo(form,task,refresh){
- const {content,date,staff}=formObj(form);
+ const data=new FormData(form);
+ const {content,date}=Object.fromEntries(data);
+ const staffs=data.getAll('todoStaff');
  if(!content.trim()){alert('할 일을 입력하세요.');return false}
  const current=task.id&&get('schedules',task.id);
  if(task.id&&current?.kind!=='todo'){alert('이 할 일을 찾을 수 없습니다.');return false}
- const fields={content:content.trim(),date,staff,pinned:form.elements.pinned.checked};
+ const fields={content:content.trim(),date,staffs,staff:staffs.join(', '),pinned:form.elements.pinned.checked};
  const value=current?{...current,...fields}:{...task,...fields,id:id(),kind:'todo',done:false,createdAt:new Date().toISOString()};
  return lmUpdateTodoList(current?db.schedules.map(item=>item.id===current.id?value:item):[...db.schedules,value],refresh);
 }
@@ -2327,7 +2333,7 @@ $('#lmWorkClose')?.click();lmScheduleFeedback(o.id?'일정 수정 내용이 화�
  const q=$('#todoSearch').value.trim().toLowerCase(),staff=$('#todoStaff').value,showDone=$('#todoShowDone').checked;
  const tasks=db.schedules.filter(x=>x.kind==='todo');
  const pinned=tasks.filter(x=>x.pinned);
- const normal=tasks.filter(x=>!x.pinned&&(showDone||!x.done)&&(!staff||x.staff===staff)&&(!q||[x.content,x.staff,x.date].join(' ').toLowerCase().includes(q))).sort((a,b)=>Number(!!a.done)-Number(!!b.done)||String(a.date||'9999').localeCompare(String(b.date||'9999')));
+ const normal=tasks.filter(x=>!x.pinned&&(showDone||!x.done)&&(!staff||lmTodoStaff(x).includes(staff))&&(!q||[x.content,...lmTodoStaff(x),x.date].join(' ').toLowerCase().includes(q))).sort((a,b)=>Number(!!a.done)-Number(!!b.done)||String(a.date||'9999').localeCompare(String(b.date||'9999')));
  const host=$('#todoRows');
  host.innerHTML=(pinned.length?'<h3 style="color:#a51b21">중요 · 상단 고정</h3>'+lmTodoMarkup(pinned):'')+lmTodoMarkup(normal);
  lmBindTodoRows(host,drawTodo);
