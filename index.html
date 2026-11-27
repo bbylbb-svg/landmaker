@@ -1077,7 +1077,7 @@ function lmOpenContractNotes(){
  const types=['업무 유의사항','권리관계·토지이용','토지 매매','공장·창고 매매','공장·창고 임대차','상가·사무실 임대차','주택 매매','주택 임대차','전대차','기타'];
  let rows=templates.map(([type,title,body],i)=>({id:'sample-'+i,type,title,body}));
  function showError(){status.textContent='저장된 문구를 불러올 수 없어요.';save.disabled=true}
- host.innerHTML='<p>계약 종류를 고른 뒤 문구를 선택하거나 새 문구를 작성하세요. 저장한 문구는 이 브라우저에 보관돼요.</p><div class="grid"><label>계약 종류<select data-type></select></label><label>저장된 문구<select data-note></select></label></div><label>제목<input data-title maxlength="120"></label><label>문구<textarea data-body rows="14" style="min-height:240px"></textarea></label><div class="row"><button type="button" data-save>문구 저장</button><button type="button" class="alt" data-copy>문구 복사</button><small data-status role="status"></small></div>';
+ host.innerHTML='<p>계약 종류를 고른 뒤 문구를 선택하거나 새 문구를 작성하세요. 저장한 문구는 이 브라우저에 보관돼요.</p><div class="grid"><label>계약 종류<select data-type></select></label><label>저장된 문구<select data-note></select></label></div><label>제목<input data-title maxlength="120" spellcheck="false"></label><label>문구<textarea data-body spellcheck="false" rows="14" style="min-height:240px"></textarea></label><div class="row"><button type="button" data-save>문구 저장</button><button type="button" class="alt" data-copy>문구 복사</button><small data-status role="status"></small></div>';
  const field=name=>host.querySelector('[data-'+name+']');
  const type=field('type'),note=field('note'),title=field('title'),body=field('body'),status=field('status'),save=field('save');
  try{
