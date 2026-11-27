@@ -1596,7 +1596,7 @@ function lmConsultPropertyIds(record){
  return [...new Set((Array.isArray(record.propertyIds)?record.propertyIds:[record.propertyId]).filter(Boolean).map(String))];
 }
 function lmConsultPropertyPicker(){
- return '<div data-consult-property-picker><label>상담한 매물 검색 (선택)<input type="search" data-consult-query placeholder="예: 은행동 367-8" autocomplete="off"></label><div data-consult-results hidden><label>검색 결과<select aria-label="상담한 매물 선택"></select></label><button type="button" class="alt" data-consult-add>매물 추가</button></div><p class="muted" data-consult-status aria-live="polite"></p><ul data-consult-selected></ul></div>';
+ return '<div data-consult-property-picker><label>상담한 매물 검색 (선택)<input type="search" data-consult-query placeholder="예: 은행동 367-8" autocomplete="off"></label><div data-consult-results hidden><label>검색 결과<select aria-label="상담한 매물 선택"></select></label><button type="button" class="alt" data-consult-add>매물 추가</button></div><p class="muted" data-consult-status aria-live="polite"></p><ul data-consult-selected style="padding:0;margin:0"></ul></div>';
 }
 function lmBindConsultPropertyPicker(form,record={}){
  const picker=form.querySelector('[data-consult-property-picker]');
@@ -1604,6 +1604,8 @@ function lmBindConsultPropertyPicker(form,record={}){
  const select=results.querySelector('select'),add=results.querySelector('button');
  const status=picker.querySelector('[data-consult-status]'),list=picker.querySelector('[data-consult-selected]');
  const ids=new Set(lmConsultPropertyIds(record));
+ const details=new Map((Array.isArray(record.propertyBriefings)?record.propertyBriefings:[]).map(item=>[String(item.propertyId),{...item}]));
+ const entry=id=>{if(!details.has(id))details.set(id,{propertyId:id,briefed:false,amount:'',reaction:''});return details.get(id);};
  function renderSelected(){
   list.replaceChildren();
   for(const id of ids){
@@ -1611,7 +1613,15 @@ function lmBindConsultPropertyPicker(form,record={}){
    const label=lmConsultPropertyLabel(get('properties',id))||'매물 정보 없음';
    remove.type='button';remove.className='alt';remove.textContent='제외';remove.setAttribute('aria-label',label+' 제외');
    remove.onclick=()=>{ids.delete(id);renderSelected();search();query.focus();};
-   row.append(label+' ',remove);list.append(row);
+   const item=entry(id);
+   row.style.cssText='padding:8px;margin:6px 0;border:1px solid #d9e6e9;border-radius:8px;list-style:none';
+   row.innerHTML='<div class="row"><label><input type="checkbox" data-brief-done> 브리핑 완료</label><strong>'+esc(label)+'</strong></div><div class="row"><label>브리핑금액<input data-brief-amount placeholder="예: 매매 11억 / 보증금 5000·월 500"></label><label>고객 반응<input data-brief-reaction placeholder="예: 관심 있음, 현장 방문 희망"></label></div>';
+   const done=row.querySelector('[data-brief-done]'),amount=row.querySelector('[data-brief-amount]'),reaction=row.querySelector('[data-brief-reaction]');
+   done.checked=!!item.briefed;amount.value=item.amount||'';reaction.value=item.reaction||'';
+   done.onchange=()=>{item.briefed=done.checked;};
+   amount.oninput=()=>{item.amount=amount.value;};
+   reaction.oninput=()=>{item.reaction=reaction.value;};
+   row.firstElementChild.append(remove);list.append(row);
   }
  }
  function search(){
@@ -1635,7 +1645,7 @@ function lmBindConsultPropertyPicker(form,record={}){
  query.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();if(!results.hidden)select.focus();}};
  select.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();add.click();}};
  renderSelected();search();
- return ()=>({propertyIds:[...ids],propertyId:[...ids][0]||''});
+ return ()=>({propertyIds:[...ids],propertyId:[...ids][0]||'',propertyBriefings:[...ids].map(id=>{const item=entry(id);return {...item,amount:item.amount.trim(),reaction:item.reaction.trim()};})});
 }
 function openCustomer(k){
  const c=get('customers',k);if(!c)return;
@@ -1659,11 +1669,11 @@ function openCustomer(k){
  <div id="contactEditor"></div>
  <div class="consult-filter-head"><h3>상담·브리핑 이력</h3><div class="consult-filter-controls"><label for="consultStaffFilter">상담 담당직원별 보기</label><select id="consultStaffFilter"><option value="">전체 직원</option>${STAFF.map(st=>`<option value="${esc(st)}">${esc(st)}</option>`).join('')}</select><label for="consultDateSort">날짜 정렬</label><select id="consultDateSort" aria-label="상담 날짜 정렬"><option value="newest">최신순 (기본)</option><option value="oldest">오래된순 (역순)</option></select><span id="consultFilterCount" class="muted">전체 ${r.length}건</span></div></div>
  <div id="consultRecordList">
- ${r.map(x=>`<div class="consult-record" data-record-id="${esc(x.id)}"><b>${esc(x.date)}</b> · ${esc(x.staff)} · 상담 상대: <b>${esc(contactLabel(x))}</b><p style="white-space:pre-wrap">${esc(x.content)}</p>${lmConsultPropertyIds(x).map(id=>`<p><small>상담 매물: ${esc(lmConsultPropertyLabel(get('properties',id))||'매물 정보 없음')}</small> ${get('properties',id)?`<button type="button" class="alt" data-related-property="${esc(id)}">매물 열기</button>`:''}</p>`).join('')}<div class="consult-actions"><button type="button" class="alt" data-consult-edit="${esc(x.id)}">수정 · 크게 보기</button><button type="button" class="danger" data-consult-delete="${esc(x.id)}">삭제</button></div><div class="consult-edit-slot"></div></div>`).join('')||'<p class="muted">기록 없음</p>'}</div>
+ ${r.map(x=>`<div class="consult-record" data-record-id="${esc(x.id)}"><b>${esc(x.date)}</b> · ${esc(x.staff)} · 상담 상대: <b>${esc(contactLabel(x))}</b><p style="white-space:pre-wrap">${esc(x.content)}</p>${lmConsultPropertyIds(x).map(id=>{const item=(x.propertyBriefings||[]).find(b=>String(b.propertyId)===id);return `<p><small>상담 매물: ${esc(lmConsultPropertyLabel(get('properties',id))||'매물 정보 없음')}</small> ${get('properties',id)?`<button type="button" class="alt" data-related-property="${esc(id)}">매물 열기</button>`:''}${item?`<br><small>${item.briefed?'✓ 브리핑 완료':'브리핑 미체크'}${item.amount?' · 브리핑금액 '+esc(item.amount):''}${item.reaction?' · 고객 반응 '+esc(item.reaction):''}</small>`:''}</p>`;}).join('')}<div class="consult-actions"><button type="button" class="alt" data-consult-edit="${esc(x.id)}">수정 · 크게 보기</button><button type="button" class="danger" data-consult-delete="${esc(x.id)}">삭제</button></div><div class="consult-edit-slot"></div></div>`).join('')||'<p class="muted">기록 없음</p>'}</div>
  <p id="consultFilterEmpty" class="muted" style="display:none">선택한 직원의 상담기록이 없습니다.</p>
  <h3>고객에 등록된 매물 · 소유 매물</h3>${related.map(p=>`<p>${esc(p.title)} <button type="button" class="alt" data-related-property="${esc(p.id)}">매물 열기</button></p>`).join('')||'<p class="muted">없음</p>'}
  <div class="row"><button id="editCustomer">고객정보 수정</button><button type="button" class="danger" id="deleteCustomerProtected">고객 삭제 (비밀번호 확인)</button></div><hr><h3>상담·브리핑 추가</h3>
- <form id="consultForm"><label>상담일<input name="date" type="date" max="9999-12-31" value="${today()}" required></label>${lmConsultPropertyPicker()}<label>담당직원<select name="staff">${staffOptions(c.staff)}</select></label><label>상담 상대방<select name="contactId">${contactOptions()}</select></label><label>상담내용<textarea name="content" required style="min-height:180px;resize:vertical"></textarea></label><button>상담 추가</button></form>`;
+ <form id="consultForm"><label>상담일<input name="date" type="date" max="9999-12-31" value="${today()}" required></label><label>담당직원<select name="staff">${staffOptions(c.staff)}</select></label><label>상담 상대방<select name="contactId">${contactOptions()}</select></label><label>상담내용<textarea name="content" required style="min-height:180px;resize:vertical"></textarea></label>${lmConsultPropertyPicker()}<button>상담 추가</button></form>`;
  detail.classList.remove('hidden','customer-detail-wide','customer-detail-full');
  if(oldMode==='wide')detail.classList.add('customer-detail-wide');if(oldMode==='full')detail.classList.add('customer-detail-full');
  const consultForm=detail.querySelector('#consultForm');
@@ -1735,7 +1745,7 @@ function openCustomer(k){
    const wrap=btn.closest('.consult-record'),slot=wrap.querySelector('.consult-edit-slot');
    if(slot.querySelector('form')){slot.innerHTML='';return}
    detail.querySelectorAll('.consult-edit-slot').forEach(x=>x.innerHTML='');
-   slot.innerHTML=`<form class="consult-edit-form"><h4>상담내용 수정</h4>${lmConsultPropertyPicker()}<label>상담일<input type="date" max="9999-12-31" name="date" value="${esc(rec.date||today())}" required></label><label>담당직원<select name="staff">${staffOptions(rec.staff||c.staff)}</select></label><label>상담 상대방<select name="contactId">${contactOptions(rec.contactId||'')}</select></label><label>상담내용<textarea name="content" required>${esc(rec.content)}</textarea></label><div class="row"><button type="submit">수정 저장</button><button type="button" class="alt" data-edit-cancel>취소</button></div></form>`;
+   slot.innerHTML=`<form class="consult-edit-form"><h4>상담내용 수정</h4><label>상담일<input type="date" max="9999-12-31" name="date" value="${esc(rec.date||today())}" required></label><label>담당직원<select name="staff">${staffOptions(rec.staff||c.staff)}</select></label><label>상담 상대방<select name="contactId">${contactOptions(rec.contactId||'')}</select></label><label>상담내용<textarea name="content" required>${esc(rec.content)}</textarea></label>${lmConsultPropertyPicker()}<div class="row"><button type="submit">수정 저장</button><button type="button" class="alt" data-edit-cancel>취소</button></div></form>`;
    slot.querySelector('[data-edit-cancel]').onclick=()=>slot.innerHTML='';
    const editedConsultProperties=lmBindConsultPropertyPicker(slot.querySelector('form'),rec);
    slot.querySelector('form').onsubmit=e=>{e.preventDefault();const o=formObj(e.target);if(!o.content.trim())return;Object.assign(rec,{...editedConsultProperties(),date:o.date,staff:o.staff,contactId:o.contactId,contactName:o.contactId?'':rec.contactName||'',content:o.content});save();openCustomer(k)};
@@ -3550,7 +3560,7 @@ function askDeletePassword(title,description){return new Promise(resolve=>{
  }catch(ex){err.textContent=ex.message||'비밀번호 확인에 실패했습니다.';inp.value='';inp.focus();form.querySelector('[type=submit]').disabled=false}})()};
  inp.focus();
 })}
-async function protectedDelete(kind,key){const isCustomer=kind==='customer',list=isCustomer?'customers':'properties',item=get(list,key);if(!item)return;if(!confirm('오프라인 자료에서 삭제할까요? 삭제 전 JSON 백업을 권장합니다.'))return;db[list]=db[list].filter(x=>x.id!==key);if(isCustomer){db.records=db.records.filter(x=>x.customerId!==key);db.properties.forEach(x=>{if(x.customerId===key)x.customerId=''})}else{db.records.forEach(x=>{const ids=lmConsultPropertyIds(x);if(ids.includes(String(key))){x.propertyIds=ids.filter(id=>id!==String(key));x.propertyId=x.propertyIds[0]||''}});db.transactions=db.transactions.filter(x=>x.propertyId!==key);db.ownership=db.ownership.filter(x=>x.propertyId!==key)}editing=null;close();save()}
+async function protectedDelete(kind,key){const isCustomer=kind==='customer',list=isCustomer?'customers':'properties',item=get(list,key);if(!item)return;if(!confirm('오프라인 자료에서 삭제할까요? 삭제 전 JSON 백업을 권장합니다.'))return;db[list]=db[list].filter(x=>x.id!==key);if(isCustomer){db.records=db.records.filter(x=>x.customerId!==key);db.properties.forEach(x=>{if(x.customerId===key)x.customerId=''})}else{db.records.forEach(x=>{const ids=lmConsultPropertyIds(x);if(ids.includes(String(key))){x.propertyIds=ids.filter(id=>id!==String(key));x.propertyId=x.propertyIds[0]||'';if(Array.isArray(x.propertyBriefings))x.propertyBriefings=x.propertyBriefings.filter(item=>String(item.propertyId)!==String(key))}});db.transactions=db.transactions.filter(x=>x.propertyId!==key);db.ownership=db.ownership.filter(x=>x.propertyId!==key)}editing=null;close();save()}
 
 function lmFinishSessionLoading(){const el=document.getElementById('lmSessionLoading');if(el)el.hidden=true}
 async function checkStaff(token){const headers={'apikey':SB_KEY,'Authorization':'Bearer '+token};const u=await fetchWithTimeout(SB_URL+'/auth/v1/user',{headers});if(!u.ok)throw Error('로그인 사용자 확인 실패 ('+u.status+')');const user=await u.json();if(!user?.id)throw Error('로그인 사용자 ID를 확인할 수 없습니다.');const r=await fetchWithTimeout(SB_URL+'/rest/v1/lm_staff?select=name,auth_user_id&auth_user_id=eq.'+encodeURIComponent(user.id)+'&limit=1',{headers});if(!r.ok)throw Error('직원 권한 확인 실패 ('+r.status+')');const a=await r.json();if(!Array.isArray(a)||a.length!==1||a[0].auth_user_id!==user.id)throw Error('현재 로그인 계정은 랜드메이커 직원으로 등록되어 있지 않습니다.');return a[0]}
