@@ -23,7 +23,7 @@ function smallUse(value){
 }
 function plan(m,o,bundle){
  const requested=o.template||infer(m.p),key=requested==='shop'&&!m.p.unitRooms?.length?'commercial':requested,source=bundle.sheets[key==='commercial'?'factory':key];if(!source)throw Error('지원하지 않는 고정 양식입니다.');
- const template={...source,widths:excelColumnWidths.map(width=>Math.round(width*8)+5)};
+ const template=source.widths.length===excelColumnWidths.length?{...source,widths:excelColumnWidths.map(width=>Math.round(width*8)+5)}:source;
  const p=m.p,parcels=m.parcels||[],rooms=p.unitRooms||[],shop=key==='shop';
  const floors=(p.buildings||[]).flatMap(b=>(b.levels?.length?b.levels:[{levelName:b.floors,levelUse:b.buildingUse,sqm:b.floorSqm}]).filter(l=>!b.perFloorSale||l.forSale).map(l=>({name:smallUse(l.levelUse||b.buildingUse),area:number(l.sqm),floor:l.levelName||''})));
  const left=shop?rooms.map(u=>({name:[u.address,u.dong,u.ho].filter(Boolean).join(' · '),area:number(u.exclusiveSqm)!==null&&number(u.commonSqm)!==null?Number(u.exclusiveSqm)+Number(u.commonSqm):null,detail:u.floor||''})):parcels.map(x=>({name:[x.san?'산':'',x.main].filter(Boolean).join(' ')+(x.sub?'-'+x.sub:''),area:number(x.sqm),detail:x.landUse||''}));
