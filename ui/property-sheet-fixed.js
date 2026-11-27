@@ -6,6 +6,7 @@ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main',rel='http:/
 const xml=v=>String(v??'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const number=v=>v!==''&&v!==null&&v!==undefined&&Number.isFinite(Number(v))?Number(v):null;
 const sum=(xs,key)=>xs.length&&xs.every(x=>number(x[key])!==null)?xs.reduce((a,x)=>a+Number(x[key]),0):null;
+const excelColumnWidths=[8.5,9,9,5.75,11,9,9,6,7.75,11];
 const date=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date());
 const base=typeof document==='undefined'?'':new URL('./templates/sale-fixed.json',document.currentScript?.src||document.baseURI).href;
 let pending;
@@ -21,7 +22,8 @@ function smallUse(value){
  return text;
 }
 function plan(m,o,bundle){
- const requested=o.template||infer(m.p),key=requested==='shop'&&!m.p.unitRooms?.length?'commercial':requested,template=bundle.sheets[key==='commercial'?'factory':key];if(!template)throw Error('지원하지 않는 고정 양식입니다.');
+ const requested=o.template||infer(m.p),key=requested==='shop'&&!m.p.unitRooms?.length?'commercial':requested,source=bundle.sheets[key==='commercial'?'factory':key];if(!source)throw Error('지원하지 않는 고정 양식입니다.');
+ const template={...source,widths:excelColumnWidths.map(width=>Math.round(width*8)+5)};
  const p=m.p,parcels=m.parcels||[],rooms=p.unitRooms||[],shop=key==='shop';
  const floors=(p.buildings||[]).flatMap(b=>(b.levels?.length?b.levels:[{levelName:b.floors,levelUse:b.buildingUse,sqm:b.floorSqm}]).filter(l=>!b.perFloorSale||l.forSale).map(l=>({name:smallUse(l.levelUse||b.buildingUse),area:number(l.sqm),floor:l.levelName||''})));
  const left=shop?rooms.map(u=>({name:[u.address,u.dong,u.ho].filter(Boolean).join(' · '),area:number(u.exclusiveSqm)!==null&&number(u.commonSqm)!==null?Number(u.exclusiveSqm)+Number(u.commonSqm):null,detail:u.floor||''})):parcels.map(x=>({name:[x.san?'산':'',x.main].filter(Boolean).join(' ')+(x.sub?'-'+x.sub:''),area:number(x.sqm),detail:x.landUse||''}));
@@ -67,6 +69,10 @@ function html(plan){
   const h=merge?t.heights.slice(merge.r1-1,merge.r2).reduce((a,b)=>a+b,0)*4/3*scale:height*4/3*scale;
   let style=(cell.css||'').replace(/font-size:([\d.]+)pt/,(_,size)=>'font-size:'+(Number(size)*4/3*scale)+'px');
   if(merge){const right=t.cells[String.fromCharCode(64+merge.c2)+merge.r1]?.css||'',bottom=t.cells[String.fromCharCode(64+merge.c1)+merge.r2]?.css||'';for(const [edge,css] of [['right',right],['bottom',bottom]]){const border=css.match(new RegExp('border-'+edge+':[^;]+'));if(border)style+=';'+border[0];}}
+  if(!plan.clean&&ref==='H2'){
+   const maxFont=Math.max(5,(t.widths[j]*scale-5)/Math.max(1,String(format(value,cell.fmt||'')).length)/.62);
+   style+=';font-size:'+Math.min(11*4/3*scale,maxFont)+'px;white-space:nowrap;overflow-wrap:normal';
+  }
   const alignment=typeof value==='number'?'flex-end':/text-align:left/.test(style)?'flex-start':'center';
   return '<td '+(merge?'rowspan="'+(merge.r2-merge.r1+1)+'" colspan="'+(merge.c2-merge.c1+1)+'"':'')+' style="'+xml(style)+';height:'+h+'px" title="'+xml(format(value,cell.fmt||''))+'"><div class="cell" style="height:'+Math.max(0,h-2)+'px;justify-content:'+alignment+'">'+content+'</div></td>';
  }).join('')+'</tr>').join('')+'</tbody></table></main>').join('');
@@ -76,14 +82,36 @@ function crc(data){let x=0xffffffff;for(const b of data){x^=b;for(let i=0;i<8;i+
 function zip(files){const parts=[],central=[];let offset=0;const u16=(v,n,o)=>v.setUint16(o,n,true),u32=(v,n,o)=>v.setUint32(o,n,true);for(const [name,value] of files){const data=typeof value==='string'?enc.encode(value):value,n=enc.encode(name),checksum=crc(data),h=new Uint8Array(30+n.length),v=new DataView(h.buffer);u32(v,0x04034b50,0);u16(v,20,4);u16(v,0x800,6);u16(v,0x21,12);u32(v,checksum,14);u32(v,data.length,18);u32(v,data.length,22);u16(v,n.length,26);h.set(n,30);parts.push(h,data);const c=new Uint8Array(46+n.length),w=new DataView(c.buffer);u32(w,0x02014b50,0);u16(w,20,4);u16(w,20,6);u16(w,0x800,8);u16(w,0x21,14);u32(w,checksum,16);u32(w,data.length,20);u32(w,data.length,24);u16(w,n.length,28);u32(w,offset,42);c.set(n,46);central.push(c);offset+=h.length+data.length;}const len=central.reduce((a,b)=>a+b.length,0),end=new Uint8Array(22),v=new DataView(end.buffer);u32(v,0x06054b50,0);u16(v,files.length,8);u16(v,files.length,10);u32(v,len,12);u32(v,offset,16);parts.push(...central,end);const out=new Uint8Array(offset+len+22);let at=0;for(const p of parts){out.set(p,at);at+=p.length;}return out;}
 function build(plan,images=[]){
  const files=[['xl/styles.xml',plan.bundle.styles],['xl/theme/theme1.xml',plan.bundle.theme]],overrides=[],relationships=[],sheets=[],defined=[];
+ const styles=plan.clean?null:new root.DOMParser().parseFromString(plan.bundle.styles,'application/xml');
+ const formats=styles?.getElementsByTagNameNS(ns,'cellXfs')[0],fitStyles=new Map();
  for(const [i,page] of plan.pages.entries()){
   const id=i+1,doc=new root.DOMParser().parseFromString(plan.template.xml,'application/xml'),sheet=doc.documentElement;
   if(doc.getElementsByTagName('parsererror').length)throw Error('엑셀 원본 양식 해석 실패');
   const sheetData=doc.getElementsByTagNameNS(ns,'sheetData')[0];
+  if(!plan.clean){
+   for(const col of doc.getElementsByTagNameNS(ns,'col')){
+    const index=Number(col.getAttribute('min'))-1;
+    // Excel stores five pixels of padding in its character-width unit.
+    if(excelColumnWidths[index]!==undefined)col.setAttribute('width',String(excelColumnWidths[index]+.625));
+   }
+  }
   if(plan.clean){doc.getElementsByTagNameNS(ns,'dimension')[0]?.setAttribute('ref','A1:P37');const cols=doc.getElementsByTagNameNS(ns,'cols')[0],hidden=doc.createElementNS(ns,'col');hidden.setAttribute('min','13');hidden.setAttribute('max','16');hidden.setAttribute('hidden','1');hidden.setAttribute('width','10');cols.append(hidden);}
   for(const [ref,value] of Object.entries(page.cells)){
    let cell=[...doc.getElementsByTagNameNS(ns,'c')].find(x=>x.getAttribute('r')===ref);
    if(!cell){const rowNumber=ref.match(/\d+$/)[0];let row=[...sheetData.children].find(x=>x.getAttribute('r')===rowNumber);if(!row){row=doc.createElementNS(ns,'row');row.setAttribute('r',rowNumber);sheetData.append(row);}cell=doc.createElementNS(ns,'c');cell.setAttribute('r',ref);row.append(cell);}
+   if(formats&&ref==='H2'){
+    const original=Number(cell.getAttribute('s')||0);
+    if(!fitStyles.has(original)){
+     const xf=formats.children[original].cloneNode(true);
+     let alignment=xf.getElementsByTagNameNS(ns,'alignment')[0];
+     if(!alignment){alignment=styles.createElementNS(ns,'alignment');xf.prepend(alignment);}
+     alignment.setAttribute('shrinkToFit','1');alignment.setAttribute('wrapText','0');
+     xf.setAttribute('applyAlignment','1');
+     fitStyles.set(original,formats.children.length);formats.append(xf);
+     formats.setAttribute('count',String(formats.children.length));
+    }
+    cell.setAttribute('s',String(fitStyles.get(original)));
+   }
    cell.replaceChildren();cell.removeAttribute('t');
    if(value.f){const f=doc.createElementNS(ns,'f');f.textContent=value.f;cell.append(f);}
    if(typeof value.v==='number'||value.f){if(typeof value.v!=='number')cell.setAttribute('t','str');const v=doc.createElementNS(ns,'v');v.textContent=String(value.v);cell.append(v);}
@@ -109,6 +137,7 @@ function build(plan,images=[]){
   sheets.push('<sheet name="'+page.name+'" sheetId="'+id+'" r:id="rId'+id+'"/>');defined.push('<definedName name="_xlnm.Print_Area" localSheetId="'+i+'">\''+page.name+'\'!$A$1:$'+String.fromCharCode(64+(plan.columns||10))+'$'+(plan.printRows||33)+'</definedName>');
   relationships.push('<Relationship Id="rId'+id+'" Type="'+rel+'/worksheet" Target="worksheets/sheet'+id+'.xml"/>');overrides.push('<Override PartName="/xl/worksheets/sheet'+id+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
  }
+ if(fitStyles.size)files[0][1]=new root.XMLSerializer().serializeToString(styles);
  images.forEach((img,j)=>files.push(['xl/media/image'+(j+1)+'.jpg',img.bytes]));
  relationships.push('<Relationship Id="rStyles" Type="'+rel+'/styles" Target="styles.xml"/>','<Relationship Id="rTheme" Type="'+rel+'/theme" Target="theme/theme1.xml"/>');
  files.push(['xl/workbook.xml','<workbook xmlns="'+ns+'" xmlns:r="'+rel+'"><bookViews><workbookView activeTab="0"/></bookViews><sheets>'+sheets.join('')+'</sheets><definedNames>'+defined.join('')+'</definedNames><calcPr calcMode="auto" fullCalcOnLoad="1"/></workbook>'],['xl/_rels/workbook.xml.rels','<Relationships xmlns="'+pkg+'">'+relationships.join('')+'</Relationships>'],['_rels/.rels','<Relationships xmlns="'+pkg+'"><Relationship Id="rId1" Type="'+rel+'/officeDocument" Target="xl/workbook.xml"/></Relationships>'],['[Content_Types].xml','<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>'+overrides.join('')+'</Types>']);
