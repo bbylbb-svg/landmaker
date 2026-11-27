@@ -1582,6 +1582,16 @@ async function deleteSelectedCustomers(){
  selectedCustomerIds.clear();editing=null;close();save();showSaveStatus(`고객 ${ids.length}명 삭제 요청 중 · 서버 저장 완료 표시를 확인하세요.`,false);
 }
 function customersView(){const f=editing?.type==='customer'?get('customers',editing.id):{};$('#view').innerHTML=`<div class="panel"><div class="row"><h2>고객 등록·수정</h2><button type="button" class="alt" id="goCustomerList">고객목록 · 엑셀형 보기</button></div>${customerForm(f)}</div>`;$('#goCustomerList').onclick=()=>{tab='customerList';editing=null;render()};bindAreaPairs($('#customerForm'));bindRichFields($('#customerForm'));lmRestoreCustomerDraft();bindPersonLookup($('#customerForm'));bindPersonCandidates($('#customerForm'),{code:'personCode',name:'name',phone:'phone',birth:'birth',address:'address',watch:['name','phone']});$('#customerForm').onsubmit=e=>{e.preventDefault();const o=formObj(e.target);richValues(e.target,o);const co=[...e.target.querySelectorAll('[name=coStaff]:checked')].map(x=>x.value),recent=o.recent?.trim(),date=o.consultDate;delete o.recent;delete o.recentRich;delete o.consultDate;delete o.coStaff;o.coStaff=co.filter(x=>x!==o.staff);const prev=o.id&&get('customers',o.id);if(!o.personCode)o.personCode=prev?.personCode||newPersonCode();if(!prev)o.id=id();db.customers=prev?db.customers.map(x=>x.id===o.id?{...x,...o}:x):[...db.customers,{...o,createdAt:new Date().toISOString()}];if(recent)db.records.push({id:id(),customerId:o.id,date:date||today(),content:recent,contentRich:o.recentRich,staff:o.staff,createdAt:new Date().toISOString()});editing=null;lmFormDirty=false;try{sessionStorage.removeItem('lm_customer_draft')}catch{}save()};$('#customerNew').onclick=()=>{if(lmFormDirty&&!confirm('작성 중인 고객정보를 버리고 새로 입력할까요?'))return;lmFormDirty=false;editing=null;render()}}
+function lmConsultParcelLabel(lot){
+ const number=lot.main?[lot.san?'산':'',lot.main+(lot.sub?'-'+lot.sub:'')].filter(Boolean).join(' '):'';
+ return [lot.dong,number].filter(Boolean).join(' ');
+}
+function lmConsultPropertyLabel(p){
+ if(!p)return '';
+ const address=(p.parcels||[]).map(lmConsultParcelLabel).find(Boolean);
+ const title=String(p.title||'').trim();
+ return [...new Set([address,title,p.propertyKind,p.type,p.propertyNo].filter(Boolean))].join(' · ')||String(p.id);
+}
 function openCustomer(k){
  const c=get('customers',k);if(!c)return;
  document.body.classList.add('lm-customer-modal-open');
@@ -1604,13 +1614,31 @@ function openCustomer(k){
  <div id="contactEditor"></div>
  <div class="consult-filter-head"><h3>상담·브리핑 이력</h3><div class="consult-filter-controls"><label for="consultStaffFilter">상담 담당직원별 보기</label><select id="consultStaffFilter"><option value="">전체 직원</option>${STAFF.map(st=>`<option value="${esc(st)}">${esc(st)}</option>`).join('')}</select><label for="consultDateSort">날짜 정렬</label><select id="consultDateSort" aria-label="상담 날짜 정렬"><option value="newest">최신순 (기본)</option><option value="oldest">오래된순 (역순)</option></select><span id="consultFilterCount" class="muted">전체 ${r.length}건</span></div></div>
  <div id="consultRecordList">
- ${r.map(x=>`<div class="consult-record" data-record-id="${esc(x.id)}"><b>${esc(x.date)}</b> · ${esc(x.staff)} · 상담 상대: <b>${esc(contactLabel(x))}</b><p style="white-space:pre-wrap">${esc(x.content)}</p>${x.propertyId?`<small>연결 매물: ${esc(get('properties',x.propertyId)?.title)}</small>`:''}<div class="consult-actions"><button type="button" class="alt" data-consult-edit="${esc(x.id)}">수정 · 크게 보기</button><button type="button" class="danger" data-consult-delete="${esc(x.id)}">삭제</button></div><div class="consult-edit-slot"></div></div>`).join('')||'<p class="muted">기록 없음</p>'}</div>
+ ${r.map(x=>`<div class="consult-record" data-record-id="${esc(x.id)}"><b>${esc(x.date)}</b> · ${esc(x.staff)} · 상담 상대: <b>${esc(contactLabel(x))}</b><p style="white-space:pre-wrap">${esc(x.content)}</p>${x.propertyId?`<small>상담 매물: ${esc(lmConsultPropertyLabel(get('properties',x.propertyId))||'매물 정보 없음')}</small> ${get('properties',x.propertyId)?`<button type="button" class="alt" data-related-property="${esc(x.propertyId)}">매물 열기</button>`:''}`:''}<div class="consult-actions"><button type="button" class="alt" data-consult-edit="${esc(x.id)}">수정 · 크게 보기</button><button type="button" class="danger" data-consult-delete="${esc(x.id)}">삭제</button></div><div class="consult-edit-slot"></div></div>`).join('')||'<p class="muted">기록 없음</p>'}</div>
  <p id="consultFilterEmpty" class="muted" style="display:none">선택한 직원의 상담기록이 없습니다.</p>
- <h3>연결 매물 · 소유 매물</h3>${related.map(p=>`<p>${esc(p.title)} <button type="button" class="alt" data-related-property="${esc(p.id)}">매물 열기</button></p>`).join('')||'<p class="muted">없음</p>'}
+ <h3>고객에 등록된 매물 · 소유 매물</h3>${related.map(p=>`<p>${esc(p.title)} <button type="button" class="alt" data-related-property="${esc(p.id)}">매물 열기</button></p>`).join('')||'<p class="muted">없음</p>'}
  <div class="row"><button id="editCustomer">고객정보 수정</button><button type="button" class="danger" id="deleteCustomerProtected">고객 삭제 (비밀번호 확인)</button></div><hr><h3>상담·브리핑 추가</h3>
- <form id="consultForm"><label>상담일<input name="date" type="date" max="9999-12-31" value="${today()}" required></label><label>연결 매물<select name="propertyId">${opts('properties')}</select></label><label>담당직원<select name="staff">${staffOptions(c.staff)}</select></label><label>상담 상대방<select name="contactId">${contactOptions()}</select></label><label>상담내용<textarea name="content" required style="min-height:180px;resize:vertical"></textarea></label><button>상담 추가</button></form>`;
+ <form id="consultForm"><label>상담일<input name="date" type="date" max="9999-12-31" value="${today()}" required></label><div><label>상담한 매물 검색 (선택)<input type="search" data-consult-property-query placeholder="예: 은행동 367-8 또는 367-8" autocomplete="off"></label><p class="muted" data-consult-property-status aria-live="polite">매물과 관련 없는 상담은 선택 없이 저장할 수 있어요.</p><label data-consult-property-results hidden>검색 결과<select name="propertyId" aria-label="상담한 매물 선택"><option value="">매물 선택 안 함</option></select></label></div><label>담당직원<select name="staff">${staffOptions(c.staff)}</select></label><label>상담 상대방<select name="contactId">${contactOptions()}</select></label><label>상담내용<textarea name="content" required style="min-height:180px;resize:vertical"></textarea></label><button>상담 추가</button></form>`;
  detail.classList.remove('hidden','customer-detail-wide','customer-detail-full');
  if(oldMode==='wide')detail.classList.add('customer-detail-wide');if(oldMode==='full')detail.classList.add('customer-detail-full');
+ const propertyQuery=detail.querySelector('[data-consult-property-query]');
+ const propertyResults=detail.querySelector('[data-consult-property-results]');
+ const propertySelect=propertyResults.querySelector('select');
+ const propertyStatus=detail.querySelector('[data-consult-property-status]');
+ propertyQuery.oninput=()=>{
+  const terms=propertyQuery.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  propertySelect.replaceChildren(new Option('매물 선택 안 함',''));
+  propertyResults.hidden=true;
+  if(!terms.length){propertyStatus.textContent='매물과 관련 없는 상담은 선택 없이 저장할 수 있어요.';return;}
+  const results=db.properties.filter(p=>{
+   const search=[lmConsultPropertyLabel(p),p.propertyNo,...(p.parcels||[]).map(lmConsultParcelLabel)].join(' ').toLowerCase();
+   return terms.every(term=>search.includes(term));
+  });
+  for(const p of results.slice(0,30))propertySelect.add(new Option(lmConsultPropertyLabel(p),String(p.id)));
+  propertyResults.hidden=!results.length;
+  propertyStatus.textContent=results.length?(results.length>30?'검색 결과가 많아요. 지번까지 입력해 범위를 좁혀 주세요.':'아래 검색 결과에서 상담한 매물을 선택하세요.'):'등록된 매물에서 검색 결과가 없어요.';
+ };
+ propertyQuery.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();if(!propertyResults.hidden)propertySelect.focus();}};
  detail.querySelectorAll('[data-related-property]').forEach(b=>b.onclick=()=>{close();openPropertyEditModal(b.dataset.relatedProperty)});
  const staffFilter=detail.querySelector('#consultStaffFilter');
  const applyConsultStaffFilter=()=>{
@@ -5011,7 +5039,7 @@ lmBindAccessAndMandates(document.querySelector('#propertyForm'));
 <script src="ui/mobile.js?v=20261119d"></script>
 
 <link rel="stylesheet" href="ui/property-sheet.css?v=20261119f">
-<script src="ui/property-sheet-fixed.js?v=20261127b"></script>
+<script src="ui/property-sheet-fixed.js?v=20261127c"></script>
 <script src="ui/property-sheet-clean.js?v=20261119a"></script>
 <script src="ui/property-sheet.js?v=20261127a"></script>
 
