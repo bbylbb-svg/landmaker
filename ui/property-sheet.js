@@ -5,10 +5,22 @@ const numeric=v=>v!==''&&v!==null&&v!==undefined&&Number.isFinite(Number(v))?Num
 const num=v=>numeric(v)===null?'미입력':Number(v).toLocaleString('ko-KR',{maximumFractionDigits:2});
 const area=v=>numeric(v)===null?'미입력':Number(v).toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2})+'㎡ / '+num(Number(v)/3.305785)+'평';
 const lot=p=>[p.dong,p.san?'산':'',p.main].filter(Boolean).join(' ')+(p.sub?'-'+p.sub:'');
+function saleAmount(value){
+ const raw=String(value??'').trim().replace(/^매매가?\s*[:：]?\s*/,'').replace(/[\s,]/g,'');
+ const won=raw.match(/^(\d+(?:\.\d+)?)원$/);
+ if(won)return Number(won[1])/10000;
+ const eok=raw.match(/^(\d+(?:\.\d+)?)억(?:(\d+(?:\.\d+)?)만(?:원)?)?(?:원)?$/);
+ if(eok)return Number(eok[1])*10000+Number(eok[2]||0);
+ return /^\d+(?:\.\d+)?(?:만원)?$/.test(raw)?Number(raw.replace(/만원$/,'')):null;
+}
 function model(p,deal){
+ const legacyIsSale=!String(p.type||'').includes('임대')||/^\s*매매/.test(String(p.price??''));
+ const sale=saleAmount(p.salePrice)??(legacyIsSale?saleAmount(p.price):null);
+ if(sale!==null)p={...p,salePrice:sale};
  const parcels=p.parcels||[],buildings=p.buildings||[];const sum=(a,f)=>a.some(x=>numeric(x[f])!==null)?a.reduce((n,x)=>n+(numeric(x[f])||0),0):null;
  const rows=buildings.flatMap(b=>(b.levels?.length?b.levels:[{levelName:b.floors,levelUse:b.buildingUse,sqm:b.floorSqm}]).map(l=>({building:[b.relatedLots,b.buildingName].filter(Boolean).join(' · ')||'동 미입력',floor:l.levelName||'층 미입력',use:l.levelUse||b.buildingUse,area:l.sqm,selected:deal==='sale'?l.forSale:l.forLease,sale:b.perFloorSale?l.salePrice:null,deposit:b.perFloorLease?l.deposit:null,rent:b.perFloorLease?l.rent:null})));
- return {p,deal,parcels,buildings,rows,land:sum(parcels,'sqm'),building:sum(buildings.map(b=>({total:b.levels?.length?sum(b.levels,'sqm'):numeric(b.floorSqm)})),'total'),address:parcels.map(lot).filter(Boolean).join(' / ')||p.title||'소재지 미입력'};
+ const addresses=[...new Set(parcels.filter(parcel=>parcel.main).map(lot))];
+ return {p,deal,parcels,buildings,rows,land:sum(parcels,'sqm'),building:sum(buildings.map(b=>({total:b.levels?.length?sum(b.levels,'sqm'):numeric(b.floorSqm)})),'total'),address:addresses[0]?addresses[0]+(addresses.length>1?' 외 '+(addresses.length-1)+'필지':''):p.title||'소재지 미입력'};
 }
 function html(m,{office='광장공인중개사사무소',contact='02-2060-5500 / 010-2382-5600',memo='',photo='',map=''}={}){
  const money=value=>numeric(value)===null?'미입력':num(value)+'만원';
