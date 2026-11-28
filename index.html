@@ -2771,14 +2771,7 @@ function lmOpenKakaoRecord(message,scope){
  <label>연결할 내용<textarea name="content" rows="7" required></textarea></label>
  <div class="row"><button type="submit">연결 저장</button><button type="button" class="alt" data-kakao-schedule>일정 등록</button><button type="button" class="alt" data-kakao-todo>할 일 등록</button></div><p role="status"></p>
  </form>
- <form data-kakao-customer-form hidden>
- <h3>신규 고객 등록</h3>
- <label>이름<input name="name" required></label>
- <label>휴대폰번호<input name="phone" type="tel" autocomplete="tel"></label>
- <label>담당자<select name="staff"><option value="">선택 안 함</option>${staffOptions(scope)}</select></label>
- <div class="row"><button type="submit">고객 저장</button><button type="button" class="alt" data-kakao-customer-cancel>취소</button></div>
- <p data-customer-status role="status"></p>
- </form>
+ <div data-kakao-customer-panel hidden></div>
  <form data-kakao-property-form hidden>
  <h3>신규 매물 등록</h3>
  <label>매물명<input name="title" required></label>
@@ -2823,26 +2816,33 @@ function lmOpenKakaoRecord(message,scope){
  }
  const selectCustomer=bindSearch('customerId','customers',phone);
  const newCustomerButton=host.querySelector('[data-kakao-new-customer]');
- const customerForm=host.querySelector('[data-kakao-customer-form]');
- const customerStatus=customerForm.querySelector('[data-customer-status]');
+ const customerPanel=host.querySelector('[data-kakao-customer-panel]');
+ let registration,customerStatus;
  function showCustomerForm(open){
-   customerForm.hidden=!open;
-   form.hidden=open;
-   newCustomerButton.setAttribute('aria-expanded',String(open));
-   if(open)customerForm.elements.name.focus();
-   else newCustomerButton.focus();
+  customerPanel.hidden=!open;form.hidden=open;
+  newCustomerButton.setAttribute('aria-expanded',String(open));
+  if(open)registration.elements.name.focus();else newCustomerButton.focus();
  }
  newCustomerButton.onclick=()=>{
-   customerForm.reset();
-   customerStatus.textContent='';
-   customerForm.elements.phone.value=phone||'';
-   showCustomerForm(true);
+  if(!registration){
+   const role=message.text.match(/매도인|매수인|임대인|임차인|소유주/)?.[0];
+   const category={매도인:'매도',매수인:'매수',임대인:'임대',임차인:'임차',소유주:'소유주'}[role];
+   customerPanel.innerHTML='<h3>신규 고객 등록</h3>'+customerForm({name:lot&&role?lot+' '+role:'',phone:phone||'',staff:form.elements.staff.value||scope,category});
+   registration=customerPanel.querySelector('form');
+   registration.querySelector('#customerNew').outerHTML='<button type="button" class="alt" data-kakao-customer-cancel>취소</button>';
+   registration.insertAdjacentHTML('beforeend','<p role="status"></p>');
+   customerStatus=registration.querySelector('[role=status]');
+   bindAreaPairs(registration);bindRichFields(registration);bindPersonLookup(registration);
+   bindPersonCandidates(registration,{code:'personCode',name:'name',phone:'phone',birth:'birth',address:'address',watch:['name','phone']});
+   registration.querySelector('[data-kakao-customer-cancel]').onclick=()=>showCustomerForm(false);
+   registration.onsubmit=saveCustomer;
+  }
+  showCustomerForm(true);
  };
- customerForm.querySelector('[data-kakao-customer-cancel]').onclick=()=>showCustomerForm(false);
- customerForm.onsubmit=event=>{
+ function saveCustomer(event){
    event.preventDefault();
-   const name=customerForm.elements.name.value.trim();
-   const number=customerForm.elements.phone.value.trim();
+   const name=registration.elements.name.value.trim();
+   const number=registration.elements.phone.value.trim();
    if(!name){customerStatus.textContent='고객 이름을 입력하세요.';return}
    const digits=value=>String(value??'').replace(/\D/g,'');
    const phoneDigits=digits(number);
@@ -2859,11 +2859,15 @@ function lmOpenKakaoRecord(message,scope){
      status.textContent=matches.length===1?'같은 번호로 등록된 고객을 선택했습니다. 이름을 확인해 주세요.':'같은 번호로 등록된 고객이 여러 명입니다. 목록에서 선택하세요.';
      return;
    }
-   const previous=db.customers;
-   const customer={id:id(),personCode:newPersonCode(),name,phone:number,staff:customerForm.elements.staff.value,createdAt:new Date().toISOString()};
+   const previous=db.customers,previousRecords=db.records;
+   const values=formObj(registration);richValues(registration,values);
+   const {recent,recentRich,consultDate,...fields}=values;
+   const coStaff=[...registration.querySelectorAll('[name=coStaff]:checked')].map(box=>box.value).filter(value=>value!==fields.staff);
+   const customer={...fields,id:id(),personCode:fields.personCode||newPersonCode(),name,phone:number,coStaff,createdAt:new Date().toISOString()};
    db.customers=[...previous,customer];
+   if(recent?.trim())db.records=[...previousRecords,{id:id(),customerId:customer.id,date:consultDate||today(),content:recent.trim(),contentRich:recentRich,staff:customer.staff,createdAt:new Date().toISOString()}];
    if(!save(null,{keepView:true})){
-     db.customers=previous;
+     db.customers=previous;db.records=previousRecords;
      customerStatus.textContent='로그인 또는 공동저장 연결이 필요합니다.';
      return;
    }
@@ -2871,7 +2875,8 @@ function lmOpenKakaoRecord(message,scope){
    selectCustomer(customer.id);
    showCustomerForm(false);
    status.textContent='신규 고객을 저장하고 선택했습니다.';
- };
+   registration=null;customerPanel.replaceChildren();
+ }
  const selectProperty=bindSearch('propertyId','properties',lot);
  const propertyForm=host.querySelector('[data-kakao-property-form]');
  const newPropertyButton=host.querySelector('[data-kakao-new-property]');
