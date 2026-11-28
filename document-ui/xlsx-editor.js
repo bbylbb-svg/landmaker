@@ -40,7 +40,9 @@ async function open(buffer){
  const stringsPart=rels.find(r=>r.type.endsWith('/sharedStrings'))?.path,strings=stringsPart&&entries.has(stringsPart)?elements(parse(dec.decode(entries.get(stringsPart))),'si').map(si=>elements(si,'t').map(x=>x.textContent).join('')):[];
  const sheets=elements(workbook,'sheet').map(s=>({name:s.getAttribute('name'),path:rels.find(r=>r.id===s.getAttributeNS(REL,'id'))?.path})).filter(s=>s.path&&entries.has(s.path));if(!sheets.length)throw Error('편집할 시트가 없습니다.');
  const stylesPath=rels.find(r=>r.type.endsWith('/styles'))?.path,styles=stylesPath&&entries.has(stylesPath)?parse(dec.decode(entries.get(stylesPath))):null;
- return {entries,workbookPath,workbook,sheets,strings,styles,changes:new Map(),cache:new Map(),dirty:false};
+ const book={entries,workbookPath,workbook,sheets,strings,styles,changes:new Map(),cache:new Map(),dirty:false,layoutChanges:new Map()};
+ for(let index=0;index<sheets.length;index++)fitListingPictures(book,index);
+ return book;
 }
 function sheetData(book,index){
  if(book.cache.has(index))return book.cache.get(index);const sheet=book.sheets[index],doc=parse(dec.decode(book.entries.get(sheet.path))),cells=new Map();let maxRow=32,maxCol=9;
@@ -60,7 +62,7 @@ function edit(book,index,ref,value,type='auto'){
  const data=sheetData(book,index);book.changes.set(data.sheet.path+'!'+cell.ref,{ref:cell.ref,value:stored,type:kind});data.maxRow=Math.max(data.maxRow,point(cell.ref).row);data.maxCol=Math.max(data.maxCol,point(cell.ref).col);book.dirty=true;return stored;
 }
 function pack(book){
- const entries=new Map(book.entries),docs=new Map();
+ const entries=new Map([...book.entries,...book.layoutChanges]),docs=new Map();
  for(const [key,change] of book.changes){const split=key.lastIndexOf('!'),path=key.slice(0,split);let doc=docs.get(path);if(!doc){doc=parse(dec.decode(entries.get(path)));docs.set(path,doc);}let cell=elements(doc,'c').find(c=>c.getAttribute('r')===change.ref);
   if(!cell){const p=point(change.ref),data=elements(doc,'sheetData')[0];let row=elements(data,'row').find(r=>Number(r.getAttribute('r'))===p.row+1);if(!row){row=doc.createElementNS(NS,'row');row.setAttribute('r',p.row+1);data.append(row);const rows=[...data.children].sort((a,b)=>Number(a.getAttribute('r'))-Number(b.getAttribute('r')));data.replaceChildren(...rows);}cell=doc.createElementNS(NS,'c');cell.setAttribute('r',change.ref);row.append(cell);row.replaceChildren(...[...row.children].sort((a,b)=>point(a.getAttribute('r')).col-point(b.getAttribute('r')).col));}
   for(const child of [...cell.children])if(['v','is','f'].includes(child.localName))child.remove();cell.setAttribute('t',change.type);
@@ -141,9 +143,34 @@ function displayValue(book,cell){
 }
 function widths(data,col){const c=data.cols.find(x=>col+1>=Number(x.getAttribute('min'))&&col+1<=Number(x.getAttribute('max')));return Math.max(35,Math.min(500,(Number(c?.getAttribute('width'))||data.defaultWidth)*7));}
 function heights(data,row){return Math.max(20,Math.min(250,(data.rows.get(row)||data.defaultHeight)*4/3));}
+function fitListingPictures(book,index){
+ const sheet=book.sheets[index],drawing=relationships(book.entries,sheet.path).find(x=>x.type.endsWith('/drawing'));
+ if(!drawing||!book.entries.has(drawing.path))return;
+ const data=sheetData(book,index);
+ const region=data.merges.find(m=>m.a.ref==='A15'&&m.b.col===9&&m.b.row>m.a.row);
+ if(!region)return;
+ const doc=parse(dec.decode(book.entries.get(drawing.path)));
+ const boundary=Array.from({length:10},(_,col)=>widths(data,col)).reduce((sum,w)=>sum+w,0);
+ const left=col=>Array.from({length:Math.min(col,10)},(_,i)=>widths(data,i)).reduce((sum,w)=>sum+w,0);
+ let changed=false;
+ for(const anchor of [...doc.documentElement.children]){
+  if(!elements(anchor,'blip').length)continue;
+  const from=elements(anchor,'from')[0],to=elements(anchor,'to')[0];
+  if(!from||!to)continue;
+  const value=(node,key)=>Number(elements(node,key)[0]?.textContent)||0;
+  const row=value(from,'row'),col=value(from,'col');
+  if(row<region.a.row||row>region.b.row||col>=10||left(col)+value(from,'colOff')/9525>=boundary)continue;
+  const endCol=value(to,'col'),endOff=value(to,'colOff');
+  if(endCol>=10?endCol===10&&!endOff:left(endCol)+endOff/9525<=boundary)continue;
+  elements(to,'col')[0].textContent='10';
+  elements(to,'colOff')[0].textContent='0';
+  changed=true;
+ }
+ if(changed)book.layoutChanges.set(drawing.path,enc.encode(serialize(doc)));
+}
 async function pictures(book,index){
  const data=sheetData(book,index),drawing=relationships(book.entries,data.sheet.path).find(x=>x.type.endsWith('/drawing'));if(!drawing||!book.entries.has(drawing.path))return [];
- const doc=parse(dec.decode(book.entries.get(drawing.path))),rels=relationships(book.entries,drawing.path),images=[];
+ const doc=parse(dec.decode(book.layoutChanges.get(drawing.path)||book.entries.get(drawing.path))),rels=relationships(book.entries,drawing.path),images=[];
  for(const anchor of [...doc.documentElement.children]){
   const blip=elements(anchor,'blip')[0],target=rels.find(x=>x.id===blip?.getAttributeNS(REL,'embed'));if(!target||!book.entries.has(target.path))continue;
   const bytes=book.entries.get(target.path),hex=[...bytes.slice(0,4)].map(v=>v.toString(16).padStart(2,'0')).join(''),mime=hex.startsWith('ffd8')?'image/jpeg':hex==='89504e47'?'image/png':dec.decode(bytes.slice(0,3))==='GIF'?'image/gif':hex==='52494646'?'image/webp':null;if(!mime)continue;
@@ -210,7 +237,7 @@ async function show({blob,file,client,propertyId,canEdit,onSaved}){
   }catch(error){frame.remove();throw error}
  });
  $('[data-download]').onclick=run(async()=>{const out=saveFile(),url=URL.createObjectURL(out);urls.add(url);const a=document.createElement('a');a.href=url;a.download=out.name;a.click();status('수정본 다운로드를 요청했습니다. 원본 첨부는 그대로입니다.');});
- $('[data-save]').onclick=run(async()=>{if(!canEdit||busy)return;if(!book.dirty){status('변경한 셀이 없습니다.');return;}busy=true;$('[data-save]').disabled=true;$('[data-value]').disabled=true;$('[data-download]').disabled=true;try{const out=saveFile();status('수정본 저장 중… 원본은 유지됩니다.');await client.upload(propertyId,out,n=>status('수정본 저장 '+n+'%'));if(!alive)return;book.dirty=false;await draw();await onSaved?.();status('수정본을 별도 첨부로 저장했습니다. 원본은 문서 목록에서 그대로 열 수 있습니다.');}finally{busy=false;if(alive){$('[data-save]').disabled=!canEdit;$('[data-download]').disabled=false;select(selected);}}});
+ $('[data-save]').onclick=run(async()=>{if(!canEdit||busy)return;if(!book.dirty&&(book.layoutSaved||!book.layoutChanges.size)){status('변경 내용이 없습니다.');return;}busy=true;$('[data-save]').disabled=true;$('[data-value]').disabled=true;$('[data-download]').disabled=true;try{const out=saveFile();status('수정본 저장 중… 원본은 유지됩니다.');await client.upload(propertyId,out,n=>status('수정본 저장 '+n+'%'));if(!alive)return;book.dirty=false;book.layoutSaved=true;await draw();await onSaved?.();status('수정본을 별도 첨부로 저장했습니다. 원본은 문서 목록에서 그대로 열 수 있습니다.');}finally{busy=false;if(alive){$('[data-save]').disabled=!canEdit;$('[data-download]').disabled=false;select(selected);}}});
  try{await draw();}catch(e){close(true);throw e;}
  return ()=>close(true);
 }
