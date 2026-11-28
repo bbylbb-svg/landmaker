@@ -5,15 +5,54 @@ class DocumentClient extends root.LMPrivatePhotos.PhotoClient{
  async download(propertyId,file){const ticket=await this.api('ticket',{propertyId,fileId:file.id});if(new URL(ticket.url).origin!==new URL(this.endpoint).origin)throw Error('문서 서버 응답 주소 오류');const token=await this.token(),r=await fetch(ticket.url,{headers:{Authorization:'Bearer '+token},cache:'no-store',referrerPolicy:'no-referrer'});if(!r.ok){const data=await r.json().catch(()=>({}));throw Error(data.error||'문서 다운로드 실패');}return r.blob();}
 }
 function mount(host,client,propertyId){let alive=true,busy=false,trash=false,files=[],permissions={},queue=[],closeEditor=null;const urls=new Set();
- host.innerHTML='<section class="lm-documents"><h2>문서 첨부 · 매물장</h2><p>엑셀·PDF·워드·한글·파워포인트 원본을 비공개 보관합니다. 파일당 30MB · 직원만 다운로드 가능.</p><label class="lm-doc-pick">문서 여러 개 선택<input type="file" data-doc-pick multiple accept=".xlsx,.xls,.pdf,.docx,.doc,.pptx,.ppt,.hwp,.hwpx" disabled></label><div class="row"><button data-doc-refresh type="button">새로고침</button><button data-doc-trash type="button" class="alt">삭제한 문서 보기</button><button data-doc-usage type="button" class="alt">문서 사용량</button></div><p data-doc-status role="status"></p><p data-doc-meter></p><div data-doc-queue></div><div data-doc-files></div><p>문서 원본은 네이버클라우드에 보관됩니다. 보관·조회·전송 요금이 발생하며 다운로드는 Supabase 전송량도 사용합니다. 삭제해도 원본은 보관되며 용량에 포함됩니다. XLSX는 ‘엑셀 열기·수정’으로 셀 값을 편집할 수 있습니다. 수정본은 원본과 별도로 보관됩니다. 매크로·외부 링크는 실행하지 않습니다.</p></section>';
+ host.innerHTML='<section class="lm-documents"><h2>문서 첨부 · 매물장</h2><p>엑셀·PDF·워드·한글·파워포인트 원본을 비공개 보관합니다. 파일당 30MB · 직원만 다운로드 가능.</p><label class="lm-doc-pick">문서 여러 개 선택<input type="file" data-doc-pick multiple accept=".xlsx,.xls,.pdf,.docx,.doc,.pptx,.ppt,.hwp,.hwpx" disabled></label><div class="row"><button data-doc-refresh type="button">새로고침</button><button data-doc-trash type="button" class="alt">삭제한 문서 보기</button><button data-doc-usage type="button" class="alt">문서 사용량</button></div><p data-doc-status role="status"></p><p data-doc-meter></p><div data-doc-queue></div><div data-doc-files></div><p>문서 원본은 네이버클라우드에 보관됩니다. 보관·조회·전송 요금이 발생하며 다운로드는 Supabase 전송량도 사용합니다. 삭제해도 원본은 보관되며 용량에 포함됩니다. 엑셀 서식과 인쇄 설정을 그대로 사용하려면 ‘PC 엑셀로 열기’를 선택하세요. 수정본은 원본과 별도로 보관됩니다. 매크로·외부 링크는 실행하지 않습니다.</p></section>';
  const $=s=>host.querySelector(s),status=s=>{if(alive)$('[data-doc-status]').textContent=s;};
- async function refresh(){try{const r=await client.api('list',{propertyId,trash});if(!alive)return;files=r.files;permissions=r.permissions;$('[data-doc-pick]').disabled=!permissions.can_edit||busy;$('[data-doc-files]').innerHTML=files.map((f,i)=>'<article><div><strong>'+esc(f.file_name)+'</strong><p>'+esc(f.extension.toUpperCase())+' · '+size(f.bytes)+' · '+esc(new Date(f.created_at).toLocaleString('ko-KR'))+(f.deleted_at?' · 삭제됨':'')+'</p></div><div>'+(!f.deleted_at?'<button type="button" data-doc-download="'+i+'">다운로드</button>':'')+(!f.deleted_at&&f.extension.toLowerCase()==='xlsx'?'<button type="button" data-doc-edit="'+i+'">'+(permissions.can_edit?'엑셀 열기·수정':'엑셀 보기')+'</button>':'')+(permissions.can_edit?'<button type="button" class="alt" data-doc-action="'+(f.deleted_at?'restore':'delete')+'" data-index="'+i+'">'+(f.deleted_at?'복원':'삭제')+'</button>':'')+'</div></article>').join('')||'<p>첨부된 문서가 없습니다.</p>';status(files.length+'개 문서 · 목록을 보는 동안 문서 원본은 내려받지 않습니다.');}catch(e){status(e.message);}}
+ async function refresh(){try{const r=await client.api('list',{propertyId,trash});if(!alive)return;files=r.files;permissions=r.permissions;$('[data-doc-pick]').disabled=!permissions.can_edit||busy;$('[data-doc-files]').innerHTML=files.map((f,i)=>'<article><div><strong>'+esc(f.file_name)+'</strong><p>'+esc(f.extension.toUpperCase())+' · '+size(f.bytes)+' · '+esc(new Date(f.created_at).toLocaleString('ko-KR'))+(f.deleted_at?' · 삭제됨':'')+'</p></div><div>'+(!f.deleted_at?(/^(xlsx|xls)$/i.test(f.extension)?'<button type="button" data-doc-desktop="'+i+'">PC 엑셀로 열기</button>':'<button type="button" data-doc-download="'+i+'">다운로드</button>'):'')+(!f.deleted_at&&f.extension.toLowerCase()==='xlsx'?'<button type="button" data-doc-edit="'+i+'">'+(permissions.can_edit?'웹에서 편집':'웹에서 보기')+'</button>':'')+(permissions.can_edit?'<button type="button" class="alt" data-doc-action="'+(f.deleted_at?'restore':'delete')+'" data-index="'+i+'">'+(f.deleted_at?'복원':'삭제')+'</button>':'')+'</div></article>').join('')||'<p>첨부된 문서가 없습니다.</p>';status(files.length+'개 문서 · 목록을 보는 동안 문서 원본은 내려받지 않습니다.');}catch(e){status(e.message);}}
  async function usage(){try{const u=await client.api('usage');if(alive)$('[data-doc-meter]').textContent='문서 보관·예약 '+(u.bytes/1e9).toFixed(3)+'GB / '+(u.limitBytes/1e9).toFixed(1)+'GB · 잔여 '+(Math.max(0,u.limitBytes-u.bytes)/1e9).toFixed(3)+'GB · '+u.scope;}catch(e){status(e.message);}}
  function queueView(){if(!alive)return;$('[data-doc-queue]').innerHTML=queue.map((q,i)=>'<p>'+esc(q.name)+' · '+esc(q.status)+' <progress max="100" value="'+q.progress+'"></progress>'+(q.failed?' <button data-doc-retry="'+i+'" type="button">재시도</button>':'')+'</p>').join('');}
  async function run(q){q.failed=false;q.progress=0;q.status='업로드 중';queueView();try{await client.upload(propertyId,q.file,n=>{q.progress=n;q.status=n===100?'저장 확인 중':'업로드 중 '+n+'%';queueView();});q.status='저장 완료';q.file=null;}catch(e){q.failed=true;q.status=e.message;}queueView();}
  $('[data-doc-pick]').onchange=async e=>{const selected=[...e.target.files];e.target.value='';if(busy)return;busy=true;$('[data-doc-pick]').disabled=true;try{for(const file of selected){if(!alive)break;const q={file,name:file.name,progress:0,status:'대기'};queue.push(q);await run(q);}}finally{busy=false;if(alive){await refresh();await usage();}}};
  $('[data-doc-queue]').onclick=async e=>{const b=e.target.closest('[data-doc-retry]');if(!b||busy)return;busy=true;try{await run(queue[Number(b.dataset.docRetry)]);}finally{busy=false;if(alive){await refresh();await usage();}}};
- $('[data-doc-files]').onclick=async e=>{const download=e.target.closest('[data-doc-download]'),edit=e.target.closest('[data-doc-edit]'),action=e.target.closest('[data-doc-action]');if(busy||(!download&&!action&&!edit))return;const file=files[Number(download?download.dataset.docDownload:edit?edit.dataset.docEdit:action.dataset.index)];if(action?.dataset.docAction==='delete'&&!confirm(file.file_name+' 연결을 삭제할까요? 원본은 보관되며 복원할 수 있습니다.'))return;busy=true;try{if(edit){if(!root.LMXlsxEditor)throw Error('엑셀 편집 모듈을 불러오지 못했습니다. 새로고침 후 다시 열어주세요.');status('엑셀을 안전하게 불러오는 중…');const blob=await client.download(propertyId,file);if(!alive)return;closeEditor?.();closeEditor=await root.LMXlsxEditor.show({blob,file,client,propertyId,canEdit:!!permissions.can_edit,onSaved:async()=>{if(alive){await refresh();await usage();}}});if(!alive){closeEditor?.();closeEditor=null;return;}status('엑셀 편집 창을 열었습니다. 원본은 유지됩니다.');}else if(download){status('문서 다운로드 중…');const blob=await client.download(propertyId,file);if(!alive)return;const url=URL.createObjectURL(blob);urls.add(url);const a=document.createElement('a');a.href=url;a.download=file.file_name;a.click();setTimeout(()=>{URL.revokeObjectURL(url);urls.delete(url);},30000);status('다운로드를 요청했습니다. 다운로드 폴더를 확인하세요.');}else{await client.api(action.dataset.docAction,{propertyId,fileId:file.id});await refresh();}}catch(e){status(e.message);}finally{busy=false;if(alive)$('[data-doc-pick]').disabled=!permissions.can_edit;}};
+ function openDesktop(file){
+  const dialog=document.createElement('dialog');
+  dialog.className='lm-xlsx-editor';
+  dialog.innerHTML='<header><h2>PC 엑셀로 열기</h2><button type="button" data-close>닫기</button></header><p data-name></p><p>원본을 내려받아 설치된 Microsoft Excel에서 여세요. 편집과 인쇄는 Excel에서 진행하면 됩니다.</p><button type="button" data-original>엑셀 원본 다운로드</button><section data-return><p>Excel에서 다른 이름으로 저장한 뒤 수정본을 선택하면 이 매물에 별도 첨부됩니다.</p><label>수정본 선택<input type="file" accept=".xlsx,.xls" data-modified></label></section><p role="status"></p>';
+  const find=selector=>dialog.querySelector(selector),report=message=>{find('[role=status]').textContent=message;};
+  const original=find('[data-original]'),modified=find('[data-modified]');
+  find('[data-name]').textContent=file.file_name;
+  find('[data-return]').hidden=!permissions.can_edit;
+  find('[data-close]').onclick=()=>dialog.close();
+  dialog.addEventListener('close',()=>{dialog.remove();if(closeEditor===dispose)closeEditor=null;},{once:true});
+  const dispose=()=>{dialog.close();dialog.remove();};
+  original.onclick=async()=>{
+   original.disabled=true;report('원본 다운로드 중…');
+   try{
+    const blob=await client.download(propertyId,file);
+    if(!dialog.isConnected)return;
+    const url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download=file.file_name;link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    report('브라우저 다운로드 목록에서 받은 파일을 열어주세요.');
+   }catch(error){report(error.message);}
+   finally{original.disabled=false;}
+  };
+  modified.onchange=async()=>{
+   const replacement=modified.files[0];
+   if(!replacement)return;
+   if(!permissions.can_edit)return;
+   if(!/\.xlsx?$/i.test(replacement.name)){report('엑셀 파일(.xlsx 또는 .xls)을 선택하세요.');return;}
+   modified.disabled=true;report('이 매물에 수정본을 저장하는 중…');
+   try{
+    await client.upload(propertyId,replacement,progress=>report('수정본 저장 '+progress+'%'));
+    report('같은 매물에 수정본을 저장했습니다.');
+    if(alive){await refresh();await usage();}
+   }catch(error){report(error.message);}
+   finally{modified.value='';modified.disabled=false;}
+  };
+  document.body.append(dialog);dialog.showModal();
+  return dispose;
+ }
+ $('[data-doc-files]').onclick=async e=>{const desktop=e.target.closest('[data-doc-desktop]'),download=e.target.closest('[data-doc-download]'),edit=e.target.closest('[data-doc-edit]'),action=e.target.closest('[data-doc-action]');if(busy||(!desktop&&!download&&!action&&!edit))return;const file=files[Number(desktop?desktop.dataset.docDesktop:download?download.dataset.docDownload:edit?edit.dataset.docEdit:action.dataset.index)];if(action?.dataset.docAction==='delete'&&!confirm(file.file_name+' 연결을 삭제할까요? 원본은 보관되며 복원할 수 있습니다.'))return;busy=true;try{if(desktop){closeEditor?.();closeEditor=openDesktop(file);}else if(edit){if(!root.LMXlsxEditor)throw Error('엑셀 편집 모듈을 불러오지 못했습니다. 새로고침 후 다시 열어주세요.');status('엑셀을 안전하게 불러오는 중…');const blob=await client.download(propertyId,file);if(!alive)return;closeEditor?.();closeEditor=await root.LMXlsxEditor.show({blob,file,client,propertyId,canEdit:!!permissions.can_edit,onSaved:async()=>{if(alive){await refresh();await usage();}}});if(!alive){closeEditor?.();closeEditor=null;return;}status('엑셀 편집 창을 열었습니다. 원본은 유지됩니다.');}else if(download){status('문서 다운로드 중…');const blob=await client.download(propertyId,file);if(!alive)return;const url=URL.createObjectURL(blob);urls.add(url);const a=document.createElement('a');a.href=url;a.download=file.file_name;a.click();setTimeout(()=>{URL.revokeObjectURL(url);urls.delete(url);},30000);status('다운로드를 요청했습니다. 다운로드 폴더를 확인하세요.');}else{await client.api(action.dataset.docAction,{propertyId,fileId:file.id});await refresh();}}catch(e){status(e.message);}finally{busy=false;if(alive)$('[data-doc-pick]').disabled=!permissions.can_edit;}};
  $('[data-doc-refresh]').onclick=()=>{if(!busy)void refresh();};$('[data-doc-trash]').onclick=()=>{if(busy)return;trash=!trash;$('[data-doc-trash]').textContent=trash?'현재 문서 보기':'삭제한 문서 보기';void refresh();};$('[data-doc-usage]').onclick=()=>void usage();void refresh();
  return()=>{alive=false;closeEditor?.();queue=[];urls.forEach(u=>URL.revokeObjectURL(u));};
 }
