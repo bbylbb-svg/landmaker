@@ -44,6 +44,367 @@ async function open(buffer){
  for(let index=0;index<sheets.length;index++)fitListingPictures(book,index);
  return book;
 }
+// Layout measurements from the office's six listing sheets. No workbook values are embedded.
+const listingStyles=[
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:20pt;font-weight:bold;color:#000000;text-align:center;border-top:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:2px solid #000;border-bottom:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;text-align:center;border-top:2px solid #000;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#00B0F0;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:2px solid #000;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:2px solid #000;border-bottom:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:2px solid #000;border-right:1px solid #808080;border-bottom:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#FF0000;text-align:center;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#00B0F0;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#4f81bd;text-align:center;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#FF0000;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#00B0F0;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:10pt;font-weight:bold;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;text-align:center;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:6pt;font-weight:bold;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:8pt;font-weight:bold;color:#000000;text-align:center;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",true,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;text-align:center;border-right:2px solid #000;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;text-align:center;border-top:2px solid #000;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;",true,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:14pt;color:#000000;text-align:center;border-right:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-right:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-bottom:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-right:2px solid #000;border-bottom:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:22pt;font-weight:bold;color:#000000;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#FF0000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-bottom:2px solid #000;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;text-align:right;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#4f81bd;text-align:right;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#7030A0;text-align:right;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-right:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;text-align:center;border-right:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-bottom:2px solid #000;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:14pt;color:#000000;text-align:center;border-right:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:9pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:3px solid #000;",true,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;color:#00B0F0;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:8pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",true,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#7030A0;text-align:right;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:20pt;font-weight:bold;color:#000000;text-align:center;border-top:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;border-top:2px solid #000;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:12pt;font-weight:bold;color:#00B0F0;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;border-top:2px solid #000;border-right:2px solid #000;border-bottom:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#FF0000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#00B0F0;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:10pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;color:#FF0000;text-align:right;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:8pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:1px solid #808080;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:8pt;font-weight:bold;color:#000000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;text-align:center;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:3px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;border-top:2px solid #000;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:12pt;font-weight:bold;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;color:#000000;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:11pt;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;",true,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:14pt;color:#000000;text-align:center;border-right:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"Noto Sans KR\",sans-serif;font-size:22pt;font-weight:bold;color:#000000;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-bottom:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:8pt;font-weight:bold;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-bottom:2px solid #000;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-right:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;text-align:center;border-top:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-right:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;color:#000000;background:#d9d9d9;text-align:center;border-top:1px solid #808080;border-left:1px solid #808080;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:11pt;font-weight:bold;color:#000000;text-align:center;border-top:2px solid #000;border-right:1px solid #808080;border-left:2px solid #000;",false,"center"],
+ ["font-family:\"맑은 고딕\",sans-serif;font-size:12pt;font-weight:bold;text-align:center;border-top:2px solid #000;border-right:2px solid #000;border-left:1px solid #808080;",false,"center"]
+];
+const listingFrames={
+ "매매 기본 양식":[[9.125,9.625,9.625,6.375,11.625,9.625,9.625,6.625,8.375,11.625],[39.95,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,39.95],[
+  [0,1,1,1,1,1,1,1,2,3],
+  [4,5,6,6,6,7,8,9,10,11],
+  [12,13,13,14,15,16,17,18,10,19],
+  [12,20,20,21,15,22,22,23,10,24],
+  [25,20,20,21,26,22,22,23,10,27],
+  [25,20,20,21,26,22,22,23,28,29],
+  [25,20,20,21,26,22,22,23,10,29],
+  [25,20,20,21,26,22,22,23,30,29],
+  [25,20,20,21,26,22,22,23,30,29],
+  [25,20,20,21,26,22,22,23,31,32],
+  [25,20,20,21,26,22,22,23,8,33],
+  [25,20,20,21,26,22,22,22,8,33],
+  [34,35,35,36,37,38,38,39,40,41],
+  [42,43,1,1,1,1,1,1,1,44],
+  [45,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [49,50,50,50,50,50,50,50,50,51],
+  [52,1,1,1,1,1,1,1,1,44]
+ ]],
+ "토지매매양식":[[9.125,9.625,9.625,6.375,11.625,9.625,9.625,6.625,8.375,11.625],[39.95,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,39.95],[
+  [0,1,1,1,1,1,1,1,2,3],
+  [53,5,6,6,6,7,8,9,10,11],
+  [25,13,54,14,55,56,56,56,10,19],
+  [25,20,20,21,57,46,46,46,10,24],
+  [12,20,20,21,57,46,46,46,10,58],
+  [12,20,20,21,57,46,46,46,10,59],
+  [12,20,20,21,57,46,46,46,60,61],
+  [12,20,20,21,57,46,46,46,8,33],
+  [12,20,20,21,57,46,46,46,20,62],
+  [12,20,20,21,57,46,46,46,20,62],
+  [12,20,20,21,57,46,46,46,20,62],
+  [12,20,20,21,57,46,46,46,63,64],
+  [65,35,35,36,66,50,50,50,40,41],
+  [67,43,1,1,1,1,1,1,1,44],
+  [68,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [52,1,1,1,1,1,1,1,1,44]
+ ]],
+ "주택매매양식":[[9.125,9.625,9.625,6.375,11.625,9.625,9.625,6.625,8.375,11.625],[39.95,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,39.95],[
+  [0,1,1,1,1,1,1,1,2,3],
+  [53,5,6,6,6,7,8,9,10,11],
+  [25,13,54,14,26,16,17,18,10,19],
+  [25,20,20,21,26,22,22,23,10,24],
+  [25,20,20,21,69,22,22,23,10,70],
+  [25,20,20,21,69,22,22,23,30,29],
+  [25,20,20,21,71,22,22,23,30,29],
+  [25,20,20,21,71,22,22,23,31,32],
+  [25,20,20,21,71,22,22,23,20,62],
+  [25,20,20,21,71,22,22,23,20,62],
+  [25,20,20,21,26,22,22,23,20,62],
+  [25,20,20,21,26,22,22,22,63,64],
+  [34,35,35,36,37,38,38,39,40,41],
+  [67,43,1,1,1,1,1,1,1,44],
+  [68,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [52,1,1,1,1,1,1,1,1,44]
+ ]],
+ "상가,지산매매양식":[[9.125,9.625,9.625,6.375,11.625,9.625,9.625,6.625,8.375,11.625],[39.95,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,39.95],[
+  [0,1,1,1,1,1,1,1,2,3],
+  [53,5,6,6,6,7,8,9,10,11],
+  [25,13,54,14,26,16,17,18,10,19],
+  [25,20,20,21,26,22,22,23,10,24],
+  [72,20,20,21,69,22,22,23,10,70],
+  [25,20,20,21,69,22,22,23,10,73],
+  [25,20,20,21,71,22,22,23,30,29],
+  [25,20,20,21,71,22,22,23,30,29],
+  [25,20,20,21,71,22,22,23,31,32],
+  [25,20,20,21,71,22,22,23,20,62],
+  [25,20,20,21,26,22,22,23,20,62],
+  [25,20,20,21,26,22,22,22,63,64],
+  [34,35,35,36,37,38,38,39,40,41],
+  [67,43,1,1,1,1,1,1,1,44],
+  [68,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [52,1,1,1,1,1,1,1,1,44]
+ ]],
+ "임대":[[9.125,9.625,9.625,6.375,11.625,9.625,9.625,6.625,8.375,11.625],[39.95,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,24.0,39.95],[
+  [74,1,1,1,1,1,1,1,75,76],
+  [77,78,6,6,6,6,6,79,80,11],
+  [81,82,83,84,85,86,87,88,89,11],
+  [81,90,90,91,85,92,92,93,89,24],
+  [81,90,90,91,94,92,92,93,80,24],
+  [81,90,90,91,94,92,92,93,80,70],
+  [81,90,90,91,94,92,92,93,80,95],
+  [81,90,90,91,94,92,92,93,80,59],
+  [81,90,90,91,96,92,92,93,80,73],
+  [81,90,90,91,96,92,92,93,97,98],
+  [81,90,90,91,85,92,92,93,90,99],
+  [81,90,90,91,85,92,92,92,90,99],
+  [100,101,101,102,103,104,104,105,106,107],
+  [108,109,1,1,1,1,1,1,1,44],
+  [110,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [49,50,50,50,50,50,50,50,50,51],
+  [111,1,1,1,1,1,1,1,1,44]
+ ]],
+ "임대기본양식":[[8.625,10.0,10.125,6.125,10.0,9.375,9.125,6.375,9.375,11.625],[39.95,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,21.0,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,16.5,24.0,39.95],[
+  [0,1,1,1,1,1,1,1,2,3],
+  [53,112,6,6,6,6,6,79,10,11],
+  [25,13,54,14,26,16,17,18,10,11],
+  [25,20,20,21,26,22,22,23,10,24],
+  [25,20,20,21,69,22,22,23,10,24],
+  [25,20,20,21,69,22,22,23,10,70],
+  [25,20,20,21,71,22,22,23,10,95],
+  [25,20,20,21,71,22,22,23,10,59],
+  [25,20,20,21,71,22,22,23,10,73],
+  [25,20,20,21,71,22,22,23,113,98],
+  [25,20,20,21,26,22,22,23,114,64],
+  [25,20,20,21,26,22,22,22,114,64],
+  [115,116,20,117,37,118,118,119,120,121],
+  [67,43,1,1,1,1,1,1,1,44],
+  [45,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [48,46,46,46,46,46,46,46,46,47],
+  [49,50,50,50,50,50,50,50,50,51],
+  [52,1,1,1,1,1,1,1,1,44]
+ ]]
+};
+function listingFrame(sheet,cells,merges){
+ if(String(cells.get('A2')?.value||'').replace(/\s/g,'')!=='대표번지')return null;
+ if(!merges.some(({a,b})=>a.ref==='A1'&&b.ref==='H1'))return null;
+ const photo=merges.find(({a,b})=>a.ref==='A15'&&b.col===9&&[32,36].includes(b.row));
+ if(!photo)return null;
+ const named=Object.hasOwn(listingFrames,sheet.name)&&listingFrames[sheet.name];
+ const frame=named&&named[1].length===photo.b.row+2?named:
+  listingFrames[photo.b.row===36?'임대':'매매 기본 양식'];
+ return {widths:frame[0],heights:frame[1],styles:frame[2]};
+}
 function sheetData(book,index){
  if(book.cache.has(index))return book.cache.get(index);const sheet=book.sheets[index],doc=parse(dec.decode(book.entries.get(sheet.path))),cells=new Map();let maxRow=32,maxCol=9;
  for(const cell of elements(doc,'c')){const ref=cell.getAttribute('r');if(!ref)continue;let p;try{p=point(ref);}catch{continue;}const value=valueOf(cell,book.strings),formula=elements(cell,'f')[0];cells.set(p.ref,{value,formula:formula?(formula.textContent||'[공유수식]'):undefined,style:Number(cell.getAttribute('s')||0),type:cell.getAttribute('t')||'n'});if(value!==''||formula){maxRow=Math.max(maxRow,p.row);maxCol=Math.max(maxCol,p.col);}}
@@ -51,7 +412,7 @@ function sheetData(book,index){
  const merges=elements(doc,'mergeCell').map(x=>{const [a,b]=x.getAttribute('ref').split(':');return {a:point(a),b:point(b||a)};});
  const arrayRanges=elements(doc,'f').filter(f=>f.hasAttribute('ref')).map(f=>{const [a,b]=f.getAttribute('ref').split(':');return {a:point(a),b:point(b||a)};});
  const format=elements(doc,'sheetFormatPr')[0];
- const data={sheet,doc,cells,merges,arrayRanges,maxRow,maxCol,defaultHeight:Number(format?.getAttribute('defaultRowHeight'))||15,defaultWidth:Number(format?.getAttribute('defaultColWidth'))||8.43,protected:elements(doc,'sheetProtection').length>0,cols:elements(doc,'col'),rows:new Map(elements(doc,'row').map(x=>[Number(x.getAttribute('r'))-1,Number(x.getAttribute('ht'))||Number(format?.getAttribute('defaultRowHeight'))||15]))};book.cache.set(index,data);return data;
+ const data={sheet,doc,cells,merges,arrayRanges,frame:listingFrame(sheet,cells,merges),maxRow,maxCol,defaultHeight:Number(format?.getAttribute('defaultRowHeight'))||15,defaultWidth:Number(format?.getAttribute('defaultColWidth'))||8.43,protected:elements(doc,'sheetProtection').length>0,cols:elements(doc,'col'),rows:new Map(elements(doc,'row').map(x=>[Number(x.getAttribute('r'))-1,Number(x.getAttribute('ht'))||Number(format?.getAttribute('defaultRowHeight'))||15]))};book.cache.set(index,data);return data;
 }
 function cellAt(book,index,ref){const s=sheetData(book,index),p=point(ref),merge=s.merges.find(m=>p.row>=m.a.row&&p.row<=m.b.row&&p.col>=m.a.col&&p.col<=m.b.col),canonical=merge?merge.a.ref:p.ref,cell=s.cells.get(canonical)||{value:'',type:'n',style:0},change=book.changes.get(s.sheet.path+'!'+canonical);return {...cell,...(change?{value:change.value,type:change.type}:{}),ref:canonical,readonly:s.protected||!!cell.formula||s.arrayRanges.some(m=>p.row>=m.a.row&&p.row<=m.b.row&&p.col>=m.a.col&&p.col<=m.b.col)};}
 function edit(book,index,ref,value,type='auto'){
@@ -101,17 +462,20 @@ function styleOf(book,index){
  return css;
 }
 function previewCellStyle(book,data,cell,merge){
- let css=styleOf(book,cell.style);
+ const p=point(cell.ref);
+ const refStyle=data.frame?.styles[p.row]?.[p.col];
+ const fixed=listingStyles[refStyle];
+ let css=fixed?.[0]||styleOf(book,cell.style);
  if(merge){
   const right=data.cells.get(colName(merge.b.col)+(merge.a.row+1));
   const bottom=data.cells.get(colName(merge.a.col)+(merge.b.row+1));
-  if(right)css+=edgeStyle(book,right.style,'right');
-  if(bottom)css+=edgeStyle(book,bottom.style,'bottom');
+  if(!fixed&&right)css+=edgeStyle(book,right.style,'right');
+  if(!fixed&&bottom)css+=edgeStyle(book,bottom.style,'bottom');
  }
  const xf=book.styles&&elements(book.styles,'cellXfs')[0]?.children[cell.style];
  const alignment=xf&&elements(xf,'alignment')[0];
  const wrap=['1','true'].includes(alignment?.getAttribute('wrapText'));
- return {css,wrap};
+ return {css,wrap:fixed?.[1]??wrap,vertical:fixed?.[2]||'center'};
 }
 function fitPreviewText(grid){
  for(const label of grid.querySelectorAll('[data-xlsx-fit]')){
@@ -141,8 +505,8 @@ function displayValue(book,cell){
  });
  return (value<0&&!plain.includes('(')?'-':'')+(plain.includes('(')?'('+result+')':result)+(percent?'%':'');
 }
-function widths(data,col){const c=data.cols.find(x=>col+1>=Number(x.getAttribute('min'))&&col+1<=Number(x.getAttribute('max')));return Math.max(35,Math.min(500,(Number(c?.getAttribute('width'))||data.defaultWidth)*7));}
-function heights(data,row){return Math.max(20,Math.min(250,(data.rows.get(row)||data.defaultHeight)*4/3));}
+function widths(data,col){if(data.frame?.widths[col]!=null)return Math.floor(data.frame.widths[col]*8);const c=data.cols.find(x=>col+1>=Number(x.getAttribute('min'))&&col+1<=Number(x.getAttribute('max')));return Math.max(35,Math.min(500,(Number(c?.getAttribute('width'))||data.defaultWidth)*7));}
+function heights(data,row){if(data.frame?.heights[row]!=null)return data.frame.heights[row]*4/3;return Math.max(20,Math.min(250,(data.rows.get(row)||data.defaultHeight)*4/3));}
 function fitListingPictures(book,index){
  const sheet=book.sheets[index],drawing=relationships(book.entries,sheet.path).find(x=>x.type.endsWith('/drawing'));
  if(!drawing||!book.entries.has(drawing.path))return;
@@ -199,7 +563,7 @@ async function show({blob,file,client,propertyId,canEdit,onSaved}){
   const seq=++renderSeq;revoke();const d=sheetData(book,index),endRow=Math.min(1048575,Math.max(d.maxRow,rowStart+31),rowStart+99),endCol=Math.min(16383,Math.max(d.maxCol,colStart+9),colStart+25),covered=new Set(),mergeMap=new Map();
   for(const m of d.merges){mergeMap.set(m.a.ref,m);for(let r=Math.max(rowStart,m.a.row);r<=Math.min(endRow,m.b.row);r++)for(let c=Math.max(colStart,m.a.col);c<=Math.min(endCol,m.b.col);c++)if(r!==m.a.row||c!==m.a.col)covered.add(colName(c)+(r+1));}
   const cols=Array.from({length:endCol-colStart+1},(_,i)=>colStart+i);let html='<table class="lm-xlsx-table" style="width:'+(60+cols.reduce((n,c)=>n+widths(d,c),0))+'px"><colgroup><col style="width:60px">'+cols.map(c=>'<col style="width:'+widths(d,c)+'px">').join('')+'</colgroup><thead><tr><th></th>'+cols.map(c=>'<th>'+colName(c)+'</th>').join('')+'</tr></thead><tbody>';
-  for(let row=rowStart;row<=endRow;row++){html+='<tr style="height:'+heights(d,row)+'px"><th>'+(row+1)+'</th>';for(const col of cols){const ref=colName(col)+(row+1);if(covered.has(ref))continue;const cell=cellAt(book,index,ref),merge=mergeMap.get(ref),style=previewCellStyle(book,d,cell,merge),display=cell.formula&&(book.changes.size||cell.value==='')?'재계산 필요':displayValue(book,cell),height=Array.from({length:merge?Math.min(endRow,merge.b.row)-row+1:1},(_,i)=>heights(d,row+i)).reduce((a,b)=>a+b,0);html+='<td data-cell="'+ref+'" tabindex="0" '+(merge?'colspan="'+(Math.min(endCol,merge.b.col)-col+1)+'" rowspan="'+(Math.min(endRow,merge.b.row)-row+1)+'"':'')+' style="'+escape((cell.type==='n'&&cell.value!==''?'text-align:right;':'')+style.css+'padding:0 3px;')+'" title="'+escape(cell.formula?'수식: '+cell.formula:cell.value)+'">'+'<div style="height:'+Math.max(0,height-1)+'px;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;overflow:hidden;white-space:'+(style.wrap?'pre-wrap;overflow-wrap:anywhere':'pre')+'"><span '+(style.wrap?'':'data-xlsx-fit')+' style="display:block;min-width:0;max-height:100%;overflow:hidden">'+escape(display)+'</span></div></td>';}html+='</tr>';}
+  for(let row=rowStart;row<=endRow;row++){html+='<tr style="height:'+heights(d,row)+'px"><th>'+(row+1)+'</th>';for(const col of cols){const ref=colName(col)+(row+1);if(covered.has(ref))continue;const cell=cellAt(book,index,ref),merge=mergeMap.get(ref),style=previewCellStyle(book,d,cell,merge),display=cell.formula&&(book.changes.size||cell.value==='')?'재계산 필요':displayValue(book,cell),height=Array.from({length:merge?Math.min(endRow,merge.b.row)-row+1:1},(_,i)=>heights(d,row+i)).reduce((a,b)=>a+b,0);html+='<td data-cell="'+ref+'" tabindex="0" '+(merge?'colspan="'+(Math.min(endCol,merge.b.col)-col+1)+'" rowspan="'+(Math.min(endRow,merge.b.row)-row+1)+'"':'')+' style="'+escape((cell.type==='n'&&cell.value!==''?'text-align:right;':'')+style.css+'padding:0 3px;')+'" title="'+escape(cell.formula?'수식: '+cell.formula:cell.value)+'">'+'<div style="height:'+Math.max(0,height-1)+'px;display:grid;grid-template-columns:minmax(0,1fr);align-items:'+style.vertical+';overflow:hidden;white-space:'+(style.wrap?'pre-wrap;overflow-wrap:anywhere':'pre')+'"><span '+(style.wrap?'':'data-xlsx-fit')+' style="display:block;min-width:0;max-height:100%;overflow:hidden">'+escape(display)+'</span></div></td>';}html+='</tr>';}
   $('[data-grid]').innerHTML=html+'</tbody></table>';fitPreviewText($('[data-grid]'));$('[data-range]').textContent=colName(colStart)+(rowStart+1)+' ~ '+colName(endCol)+(endRow+1)+' · 100행/26열 단위';$('[data-save]').disabled=!canEdit||busy||d.protected;$('[data-value]').disabled=!canEdit||d.protected;
   const images=await pictures(book,index);if(!alive||seq!==renderSeq)return;
   const xOffset=Array.from({length:colStart},(_,i)=>widths(d,i)).reduce((a,b)=>a+b,0),yOffset=Array.from({length:rowStart},(_,i)=>heights(d,i)).reduce((a,b)=>a+b,0);
