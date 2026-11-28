@@ -3826,13 +3826,14 @@ async function lmSyncFlush(){
  if(window.lmRecoveryBlocked||lmSyncBusy||lmSyncSaving||Date.now()<lmSyncNextAttempt||!navigator.onLine||lmOfflineTest()||window.lmOfflineMode||!authToken)return;
  lmSyncBusy=true;
  try{
-  let processed=0;const run=async()=>{for(const row of await lmSyncRows()){
+  let processed=0,conflicts=0;const actor=lmSyncActor;const run=async()=>{for(const row of await lmSyncRows()){
+   if(!authToken||lmSyncActor!==actor)return;
    if(row.status!=='pending')continue;
    if(row.operation.actor_id!==lmSyncActor)continue;
-   const result=await lmSyncRequest(row.operation);await lmSyncMark(row.id,result);processed++;
-  }await lmSyncCheckpoint();await lmSyncPull()};
+   const result=await lmSyncRequest(row.operation);await lmSyncMark(row.id,result);processed++;if(result.status==='conflict')conflicts++;
+  }if(!authToken||lmSyncActor!==actor)return;await lmSyncCheckpoint();if(authToken&&lmSyncActor===actor)await lmSyncPull()};
   if(navigator.locks)await navigator.locks.request('landmaker-journal-sender-v1',run);else await run();
-  lmSyncFailures=0;lmSyncNextAttempt=0;if(processed)showSaveStatus('자동 병합 처리 '+processed+'건 완료 · 충돌 여부는 저장 내역에서 확인하세요.',false);
+  lmSyncFailures=0;lmSyncNextAttempt=0;if(conflicts)showSaveStatus('자동 동기화 중 '+conflicts+'건 확인 필요 · 내 입력은 이 PC에 보관됩니다. 저장 내역에서 두 값을 확인하세요.',true);else if(processed)showSaveStatus('자동 병합 '+processed+'건 완료',false);
  }catch(e){lmSyncNextAttempt=Date.now()+Math.min(120000,15000*2**lmSyncFailures++);showSaveStatus('자동 전송 대기 · PC 원본 유지: '+e.message,true)}finally{lmSyncBusy=false;void lmSyncStatus()}
 }
 const lmArchiveNetwork=archiveAPI;
@@ -3871,19 +3872,31 @@ archiveAPI=async function(table,params={},method='GET',body=null){
  await lmSyncLocalTableSave(table,before,after);lmSyncArchiveBases.set(table+'|'+identity,lmSyncEngine.clone(after));
  await lmSyncFlush();return [after];
 };
+function lmSyncHasOpenEditor(){
+ const detail=document.querySelector('#detail');
+ return lmActiveUnsavedForm()||lmFormDirty||window.lmPropertyDraftDirty||
+  !!document.querySelector('#propertyForm,#customerForm,dialog[open],#lmRecordPopup')||
+  !!(detail&&!detail.classList.contains('hidden')&&detail.getClientRects().length);
+}
 async function lmSyncPull(){
+ const actor=lmSyncActor;
+ const sessionCurrent=()=>!!authToken&&lmSyncActor===actor&&!window.lmOfflineMode;
  const latest=await cloudRPC('lm_cloud_read',{});if(!latest?.data||!Number.isFinite(latest.version))throw Error('최신 공동자료 조회 실패');
- if(latest.version===lmSyncLastPulledVersion&&Date.now()-lmSyncLastArchiveRefresh<60000)return;
+ if(!sessionCurrent()||latest.version<cloudVersion)return;
+ const needsCache=latest.version!==lmSyncLastPulledVersion||Date.now()-lmSyncLastArchiveRefresh>=60000;
+ if(needsCache){
  const cached=await lmLocalRead();let archives=cached?.archives;
  if(!lmSyncSandbox&&archives?.completedAt&&Date.now()-lmSyncLastArchiveRefresh>60000){
   archives=lmSyncEngine.clone(archives);
   for(const [table,key]of Object.entries(lmSyncEngine.tableKeys)){let after=null;const all=[];for(;;){const rows=await lmArchiveNetwork(table,{select:'*',order:key+'.asc',limit:'1000',...(after?{[key]:'gt.'+after}:{})});if(!Array.isArray(rows))throw Error('PC 사본 갱신 응답 오류');all.push(...rows);if(rows.length<1000)break;const next=String(rows.at(-1)[key]);if(next===after)throw Error('PC 사본 페이지 반복');after=next}archives.tables[table]=all;}
   lmSyncLastArchiveRefresh=Date.now();
  }
+ if(!sessionCurrent()||latest.version<cloudVersion)return;
  await window.lmCacheSnapshot(latest.data,latest.version,archives);
- lmSyncLastPulledVersion=latest.version;if(lmSyncSandbox)lmSyncLastArchiveRefresh=Date.now();
+ lmSyncLastPulledVersion=latest.version;if(lmSyncSandbox||!archives?.completedAt)lmSyncLastArchiveRefresh=Date.now();
+ }
  const pending=(await lmSyncRows()).some(x=>['pending','conflict'].includes(x.status));
- if(!lmSyncSaving&&!pending&&!lmFormDirty&&!window.lmPropertyDraftDirty&&!document.querySelector('#propertyForm,#customerForm')&&lmSyncEngine.equal(db,lmSyncTail)){
+ if(sessionCurrent()&&latest.version>=cloudVersion&&!lmSyncSaving&&!pending&&!lmSyncHasOpenEditor()&&lmSyncEngine.equal(db,lmSyncTail)){
   db={...empty(),...latest.data};lmSyncTail=lmSyncEngine.clone(db);cloudVersion=latest.version;cloudLastSaved=JSON.stringify(db);lmAuditBaseline=lmAuditSnapshot();
  }
 }
