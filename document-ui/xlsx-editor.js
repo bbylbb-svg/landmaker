@@ -78,12 +78,46 @@ function pack(book){
  const out=zip([...entries]);if(out.length>MAX)throw Error('수정본이 30MB를 넘습니다. 이 파일은 PC 엑셀에서 수정해 주세요. 원본은 유지됩니다.');return out;
 }
 const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function edgeStyle(book,index,edge){
+ const styles=book.styles;
+ if(!styles)return '';
+ const xf=elements(styles,'cellXfs')[0]?.children[index];
+ const border=elements(styles,'borders')[0]?.children[Number(xf?.getAttribute('borderId')||0)];
+ const side=border&&elements(border,edge)[0],kind=side?.getAttribute('style');
+ if(!kind||kind==='none')return '';
+ const rgb=elements(side,'color')[0]?.getAttribute('rgb');
+ const color=/^[\da-f]{8}$/i.test(rgb||'')?'#'+rgb.slice(-6):'#222';
+ const line=kind==='double'?'3px double':/dash/i.test(kind)?'1px dashed':kind==='dotted'?'1px dotted':kind==='thick'?'3px solid':/medium/i.test(kind)?'2px solid':'1px solid';
+ return 'border-'+edge+':'+line+' '+color+';';
+}
 function styleOf(book,index){
  const d=book.styles;if(!d)return '';const xf=elements(d,'cellXfs')[0]?.children[index];if(!xf)return '';const font=elements(d,'fonts')[0]?.children[Number(xf.getAttribute('fontId')||0)],fill=elements(d,'fills')[0]?.children[Number(xf.getAttribute('fillId')||0)],alignment=elements(xf,'alignment')[0];
  const color=node=>{const rgb=node?.getAttribute('rgb');return /^[\da-f]{8}$/i.test(rgb||'')?'#'+rgb.slice(-6):null;};
  const size=Math.min(72,Math.max(6,Number(font&&elements(font,'sz')[0]?.getAttribute('val'))||11)),family=font&&elements(font,'name')[0]?.getAttribute('val')||'Malgun Gothic';let css='font-size:'+size+'pt;font-family:"'+family.replace(/[";<>\\]/g,'')+'",sans-serif;';
  if(font&&elements(font,'b').some(x=>x.getAttribute('val')!=='0'))css+='font-weight:bold;';const fg=font&&color(elements(font,'color')[0]),bg=fill&&color(elements(fill,'fgColor')[0]);if(fg)css+='color:'+fg+';';if(bg)css+='background:'+bg+';';
- if(['left','center','right'].includes(alignment?.getAttribute('horizontal')))css+='text-align:'+alignment.getAttribute('horizontal')+';';return css;
+ if(['left','center','right'].includes(alignment?.getAttribute('horizontal')))css+='text-align:'+alignment.getAttribute('horizontal')+';';for(const edge of ['top','right','bottom','left'])css+=edgeStyle(book,index,edge);
+ return css;
+}
+function previewCellStyle(book,data,cell,merge){
+ let css=styleOf(book,cell.style);
+ if(merge){
+  const right=data.cells.get(colName(merge.b.col)+(merge.a.row+1));
+  const bottom=data.cells.get(colName(merge.a.col)+(merge.b.row+1));
+  if(right)css+=edgeStyle(book,right.style,'right');
+  if(bottom)css+=edgeStyle(book,bottom.style,'bottom');
+ }
+ const xf=book.styles&&elements(book.styles,'cellXfs')[0]?.children[cell.style];
+ const alignment=xf&&elements(xf,'alignment')[0];
+ const wrap=['1','true'].includes(alignment?.getAttribute('wrapText'));
+ return {css,wrap};
+}
+function fitPreviewText(grid){
+ for(const label of grid.querySelectorAll('[data-xlsx-fit]')){
+  const width=label.parentElement.clientWidth;
+  if(!width||label.scrollWidth<=width)continue;
+  const computed=getComputedStyle(label),size=parseFloat(computed.fontSize);
+  if(size)label.style.fontSize=Math.max(5,size*width/label.scrollWidth)+'px';
+ }
 }
 const builtInNumberFormats={1:'0',2:'0.00',3:'#,##0',4:'#,##0.00',9:'0%',10:'0.00%',37:'#,##0;(#,##0)',38:'#,##0;(#,##0)',39:'#,##0.00;(#,##0.00)',40:'#,##0.00;(#,##0.00)',41:'#,##0;(#,##0);"-"',42:'#,##0;(#,##0);"-"',43:'#,##0.00;(#,##0.00);"-"',44:'#,##0.00;(#,##0.00);"-"'};
 function displayValue(book,cell){
@@ -124,7 +158,7 @@ async function pictures(book,index){
 }
 function fileName(original){const stamp=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date()).replace(/[^\d]/g,'');return original.replace(/\.xlsx$/i,'').slice(0,100)+'_수정_'+stamp+'_'+crypto.randomUUID().slice(0,6)+'.xlsx';}
 async function show({blob,file,client,propertyId,canEdit,onSaved}){
- const book=await open(await blob.arrayBuffer()),dialog=document.createElement('dialog');dialog.className='lm-xlsx-editor';dialog.innerHTML='<header><h2>첨부 엑셀 편집</h2><button type="button" data-close>닫기</button></header><p data-title></p><p class="lm-xlsx-note">셀을 선택해 아래 입력칸에서 글자·숫자를 수정하세요. 원본은 그대로 남고 수정본이 별도 첨부됩니다. 원본·수정본 모두 보관용량에 포함됩니다. 수식 셀과 보호 시트는 읽기 전용이며, 계산 결과는 다운로드한 수정본을 엑셀에서 열 때 다시 계산됩니다. 사진·차트·서식 원본은 보존하지만 일부 개체는 미리보기에서 생략됩니다.</p><div class="lm-xlsx-toolbar"><label>시트<select data-sheet></select></label><label>셀 주소<input data-address value="A1" aria-label="편집할 셀 주소"></label><button type="button" data-jump>셀로 이동</button><label>입력 형식<select data-type><option value="auto">자동</option><option value="text">글자</option><option value="number">숫자</option></select></label><label class="lm-xlsx-value">선택 셀 값<input data-value aria-label="선택 셀 값"></label><button type="button" data-apply>셀에 적용</button></div><div class="lm-xlsx-toolbar"><button type="button" data-save>수정본을 매물에 저장</button><button type="button" class="alt" data-download>수정본 PC 다운로드</button><button type="button" class="alt" data-row-prev>이전 행</button><button type="button" class="alt" data-row-next>다음 행</button><button type="button" class="alt" data-col-prev>이전 열</button><button type="button" class="alt" data-col-next>다음 열</button><span data-range></span></div><p data-status role="status"></p><div class="lm-xlsx-viewport"><div data-grid class="lm-xlsx-grid-surface"></div></div>';
+ const book=await open(await blob.arrayBuffer()),dialog=document.createElement('dialog');dialog.className='lm-xlsx-editor';dialog.innerHTML='<header><h2>첨부 엑셀 편집</h2><button type="button" data-close>닫기</button></header><p data-title></p><p class="lm-xlsx-note">셀을 선택해 아래 입력칸에서 글자·숫자를 수정하세요. 원본은 그대로 남고 수정본이 별도 첨부됩니다. 원본·수정본 모두 보관용량에 포함됩니다. 수식 셀과 보호 시트는 읽기 전용이며, 계산 결과는 다운로드한 수정본을 엑셀에서 열 때 다시 계산됩니다. 인쇄는 현재 표시된 셀 범위를 사용합니다. 엑셀 원본의 일부 개체는 미리보기와 인쇄에서 생략될 수 있습니다.</p><div class="lm-xlsx-toolbar"><label>시트<select data-sheet></select></label><label>셀 주소<input data-address value="A1" aria-label="편집할 셀 주소"></label><button type="button" data-jump>셀로 이동</button><label>입력 형식<select data-type><option value="auto">자동</option><option value="text">글자</option><option value="number">숫자</option></select></label><label class="lm-xlsx-value">선택 셀 값<input data-value aria-label="선택 셀 값"></label><button type="button" data-apply>셀에 적용</button></div><div class="lm-xlsx-toolbar"><button type="button" data-save>수정본을 매물에 저장</button><button type="button" class="alt" data-download>수정본 PC 다운로드</button><button type="button" class="alt" data-print>인쇄 · PDF 저장</button><button type="button" class="alt" data-row-prev>이전 행</button><button type="button" class="alt" data-row-next>다음 행</button><button type="button" class="alt" data-col-prev>이전 열</button><button type="button" class="alt" data-col-next>다음 열</button><span data-range></span></div><p data-status role="status"></p><div class="lm-xlsx-viewport"><div data-grid class="lm-xlsx-grid-surface"></div></div>';
  document.body.append(dialog);dialog.showModal();const $=s=>dialog.querySelector(s),urls=new Set();let alive=true,index=0,rowStart=0,colStart=0,selected='A1',busy=false,inputDirty=false,renderSeq=0;
  $('[data-title]').textContent=file.file_name;$('[data-sheet]').innerHTML=book.sheets.map((s,i)=>'<option value="'+i+'">'+escape(s.name)+'</option>').join('');
  const status=s=>{if(alive)$('[data-status]').textContent=s;};
@@ -138,8 +172,8 @@ async function show({blob,file,client,propertyId,canEdit,onSaved}){
   const seq=++renderSeq;revoke();const d=sheetData(book,index),endRow=Math.min(1048575,Math.max(d.maxRow,rowStart+31),rowStart+99),endCol=Math.min(16383,Math.max(d.maxCol,colStart+9),colStart+25),covered=new Set(),mergeMap=new Map();
   for(const m of d.merges){mergeMap.set(m.a.ref,m);for(let r=Math.max(rowStart,m.a.row);r<=Math.min(endRow,m.b.row);r++)for(let c=Math.max(colStart,m.a.col);c<=Math.min(endCol,m.b.col);c++)if(r!==m.a.row||c!==m.a.col)covered.add(colName(c)+(r+1));}
   const cols=Array.from({length:endCol-colStart+1},(_,i)=>colStart+i);let html='<table class="lm-xlsx-table" style="width:'+(60+cols.reduce((n,c)=>n+widths(d,c),0))+'px"><colgroup><col style="width:60px">'+cols.map(c=>'<col style="width:'+widths(d,c)+'px">').join('')+'</colgroup><thead><tr><th></th>'+cols.map(c=>'<th>'+colName(c)+'</th>').join('')+'</tr></thead><tbody>';
-  for(let row=rowStart;row<=endRow;row++){html+='<tr style="height:'+heights(d,row)+'px"><th>'+(row+1)+'</th>';for(const col of cols){const ref=colName(col)+(row+1);if(covered.has(ref))continue;const cell=cellAt(book,index,ref),merge=mergeMap.get(ref),display=cell.formula&&(book.changes.size||cell.value==='')?'재계산 필요':displayValue(book,cell),height=Array.from({length:merge?Math.min(endRow,merge.b.row)-row+1:1},(_,i)=>heights(d,row+i)).reduce((a,b)=>a+b,0);html+='<td data-cell="'+ref+'" tabindex="0" '+(merge?'colspan="'+(Math.min(endCol,merge.b.col)-col+1)+'" rowspan="'+(Math.min(endRow,merge.b.row)-row+1)+'"':'')+' style="'+escape((cell.type==='n'&&cell.value!==''?'text-align:right;':'')+styleOf(book,cell.style)+'padding:0 3px;')+'" title="'+escape(cell.formula?'수식: '+cell.formula:cell.value)+'">'+'<div style="height:'+Math.max(0,height-1)+'px;display:grid;align-items:center;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere"><span style="min-width:0;max-height:100%;overflow:hidden">'+escape(display)+'</span></div></td>';}html+='</tr>';}
-  $('[data-grid]').innerHTML=html+'</tbody></table>';$('[data-range]').textContent=colName(colStart)+(rowStart+1)+' ~ '+colName(endCol)+(endRow+1)+' · 100행/26열 단위';$('[data-save]').disabled=!canEdit||busy||d.protected;$('[data-value]').disabled=!canEdit||d.protected;
+  for(let row=rowStart;row<=endRow;row++){html+='<tr style="height:'+heights(d,row)+'px"><th>'+(row+1)+'</th>';for(const col of cols){const ref=colName(col)+(row+1);if(covered.has(ref))continue;const cell=cellAt(book,index,ref),merge=mergeMap.get(ref),style=previewCellStyle(book,d,cell,merge),display=cell.formula&&(book.changes.size||cell.value==='')?'재계산 필요':displayValue(book,cell),height=Array.from({length:merge?Math.min(endRow,merge.b.row)-row+1:1},(_,i)=>heights(d,row+i)).reduce((a,b)=>a+b,0);html+='<td data-cell="'+ref+'" tabindex="0" '+(merge?'colspan="'+(Math.min(endCol,merge.b.col)-col+1)+'" rowspan="'+(Math.min(endRow,merge.b.row)-row+1)+'"':'')+' style="'+escape((cell.type==='n'&&cell.value!==''?'text-align:right;':'')+style.css+'padding:0 3px;')+'" title="'+escape(cell.formula?'수식: '+cell.formula:cell.value)+'">'+'<div style="height:'+Math.max(0,height-1)+'px;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;overflow:hidden;white-space:'+(style.wrap?'pre-wrap;overflow-wrap:anywhere':'pre')+'"><span '+(style.wrap?'':'data-xlsx-fit')+' style="display:block;min-width:0;max-height:100%;overflow:hidden">'+escape(display)+'</span></div></td>';}html+='</tr>';}
+  $('[data-grid]').innerHTML=html+'</tbody></table>';fitPreviewText($('[data-grid]'));$('[data-range]').textContent=colName(colStart)+(rowStart+1)+' ~ '+colName(endCol)+(endRow+1)+' · 100행/26열 단위';$('[data-save]').disabled=!canEdit||busy||d.protected;$('[data-value]').disabled=!canEdit||d.protected;
   const images=await pictures(book,index);if(!alive||seq!==renderSeq)return;
   const xOffset=Array.from({length:colStart},(_,i)=>widths(d,i)).reduce((a,b)=>a+b,0),yOffset=Array.from({length:rowStart},(_,i)=>heights(d,i)).reduce((a,b)=>a+b,0);
   for(const picture of images){const url=URL.createObjectURL(new Blob([picture.bytes],{type:picture.mime}));urls.add(url);const img=document.createElement('img');img.src=url;img.alt='첨부 엑셀에 포함된 사진';img.style.cssText='position:absolute;pointer-events:none;left:'+(60+picture.x-xOffset)+'px;top:'+(28+picture.y-yOffset)+'px;width:'+picture.width+'px;height:'+picture.height+'px;object-fit:fill;';$('[data-grid]').append(img);}
@@ -154,6 +188,27 @@ async function show({blob,file,client,propertyId,canEdit,onSaved}){
  $('[data-sheet]').onchange=run(async()=>{index=Number($('[data-sheet]').value);rowStart=colStart=0;selected='A1';await draw();});
  for(const [button,change] of [['row-prev',()=>rowStart=Math.max(0,rowStart-100)],['row-next',()=>rowStart=Math.min(1048500,rowStart+100)],['col-prev',()=>colStart=Math.max(0,colStart-26)],['col-next',()=>colStart=Math.min(16358,colStart+26)]])$('[data-'+button+']').onclick=run(async()=>{change();selected=colName(colStart)+(rowStart+1);await draw();});
  const saveFile=()=>new File([pack(book)],fileName(file.file_name),{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+ $('[data-print]').onclick=run(async()=>{
+  await draw();
+  if(!alive)return;
+  const frame=document.createElement('iframe');
+  frame.style.cssText='position:fixed;left:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+  document.body.append(frame);
+  const printDoc=frame.contentDocument,printWindow=frame.contentWindow;
+  try{
+   printDoc.title=file.file_name;
+   const css=printDoc.createElement('style');
+   css.textContent='@page{size:A4 landscape;margin:8mm}body{margin:0;color:#111;font:11pt Arial,sans-serif}.lm-xlsx-table{table-layout:fixed;border-collapse:collapse;background:white}.lm-xlsx-table td,.lm-xlsx-table th{box-sizing:border-box;border:1px solid #c8d0d4;vertical-align:middle}.lm-xlsx-table th{height:28px;padding:2px;font-size:12px}.lm-xlsx-table tr{break-inside:avoid}.lm-xlsx-table th{visibility:hidden}*{print-color-adjust:exact}';
+   printDoc.head.append(css);
+   const grid=printDoc.importNode($('[data-grid]'),true);
+   const width=$('[data-grid] table').getBoundingClientRect().width||1000;
+   grid.style.cssText='position:relative;width:'+width+'px;overflow:hidden;zoom:'+Math.min(1,1050/width);
+   printDoc.body.append(grid);
+   await Promise.all([...grid.querySelectorAll('img')].map(img=>img.decode?.().catch(()=>{})));
+   printWindow.addEventListener('afterprint',()=>frame.remove(),{once:true});
+   printWindow.focus();printWindow.print();
+  }catch(error){frame.remove();throw error}
+ });
  $('[data-download]').onclick=run(async()=>{const out=saveFile(),url=URL.createObjectURL(out);urls.add(url);const a=document.createElement('a');a.href=url;a.download=out.name;a.click();status('수정본 다운로드를 요청했습니다. 원본 첨부는 그대로입니다.');});
  $('[data-save]').onclick=run(async()=>{if(!canEdit||busy)return;if(!book.dirty){status('변경한 셀이 없습니다.');return;}busy=true;$('[data-save]').disabled=true;$('[data-value]').disabled=true;$('[data-download]').disabled=true;try{const out=saveFile();status('수정본 저장 중… 원본은 유지됩니다.');await client.upload(propertyId,out,n=>status('수정본 저장 '+n+'%'));if(!alive)return;book.dirty=false;await draw();await onSaved?.();status('수정본을 별도 첨부로 저장했습니다. 원본은 문서 목록에서 그대로 열 수 있습니다.');}finally{busy=false;if(alive){$('[data-save]').disabled=!canEdit;$('[data-download]').disabled=false;select(selected);}}});
  try{await draw();}catch(e){close(true);throw e;}
